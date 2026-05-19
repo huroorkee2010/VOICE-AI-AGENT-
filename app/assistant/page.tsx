@@ -1,0 +1,230 @@
+'use client';
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Navbar } from '@/components/layout/Navbar';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
+import { MicrophoneButton } from '@/components/assistant/MicrophoneButton';
+import { AIIndicator } from '@/components/assistant/AIIndicator';
+import { WaveformAnimation } from '@/components/assistant/WaveformAnimation';
+import { ConversationHistory } from '@/components/assistant/ConversationHistory';
+import { useVoiceChat } from '@/hooks/useVoiceChat';
+import { useConversationStore } from '@/store/conversation';
+import { Send, Menu, X, Maximize2, Minimize2 } from 'lucide-react';
+
+export default function AssistantPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [textInput, setTextInput] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
+  const store = useConversationStore();
+  const voiceChat = useVoiceChat();
+
+  const {
+    startListening,
+    stopListening,
+    sendMessage,
+    interruptAI,
+    clearConversation,
+  } = voiceChat;
+
+  const { isRecording, isSpeaking, isListening } = store.audioState;
+
+  // Get status for indicator
+  const getStatus = (): 'idle' | 'listening' | 'processing' | 'speaking' => {
+    if (isSpeaking) return 'speaking';
+    if (isListening) return 'processing';
+    if (isRecording) return 'listening';
+    return 'idle';
+  };
+
+  // Handle text message submission
+  const handleSendMessage = () => {
+    if (!textInput.trim()) return;
+    sendMessage(textInput);
+    setTextInput('');
+  };
+
+  // Handle key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Handle microphone button press (push to talk)
+  const handleMicStart = () => {
+    startListening();
+  };
+
+  const handleMicStop = () => {
+    stopListening();
+  };
+
+  return (
+    <div className={`min-h-screen flex flex-col bg-dark-950 ${fullscreen ? 'fixed inset-0 z-50' : ''}`}>
+      {/* Navbar */}
+      <Navbar currentPage="assistant" />
+
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar - Fixed positioning for all screen sizes */}
+        <Sidebar
+          conversations={store.conversations}
+          currentConversationId={store.currentConversation?.id}
+          onSelectConversation={(conv) => store.setCurrentConversation(conv)}
+          onCreateNew={() => store.createConversation()}
+          onDeleteConversation={(id) => store.deleteConversation(id)}
+          isOpen={sidebarOpen}
+        />
+
+        {/* Main Content */}
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Header */}
+          <header className="border-b border-dark-700 bg-dark-900/50 backdrop-blur-sm px-4 sm:px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="md:hidden p-2 hover:bg-dark-700 rounded-lg transition-colors"
+              >
+                {sidebarOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
+              <div>
+                <h1 className="text-xl font-bold">Voice Assistant</h1>
+                <p className="text-sm text-dark-400">
+                  {store.currentConversation?.title || 'No conversation'}
+                </p>
+              </div>
+            </div>
+
+            {/* Header Actions */}
+            <div className="flex items-center gap-2">
+              <AIIndicator status={getStatus()} />
+              <button
+                onClick={() => setFullscreen(!fullscreen)}
+                className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
+                title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+              >
+                {fullscreen ? (
+                  <Minimize2 className="w-5 h-5" />
+                ) : (
+                  <Maximize2 className="w-5 h-5" />
+                )}
+              </button>
+            </div>
+          </header>
+
+          {/* Chat Area */}
+          <div className="flex-1 overflow-y-auto overflow-x-hidden bg-dark-950">
+            <ConversationHistory
+              messages={store.currentConversation?.messages || []}
+              isLoading={voiceChat.isWaitingForAI}
+              onClear={clearConversation}
+            />
+          </div>
+
+          {/* Voice Visualizer and Controls */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="border-t border-dark-700 bg-dark-900/50 backdrop-blur-sm"
+          >
+            {/* Waveform */}
+            <div className="px-4 sm:px-6 py-4 border-b border-dark-700">
+              <WaveformAnimation
+                isActive={isRecording || isSpeaking}
+                color={isSpeaking ? 'rgb(74, 222, 128)' : 'rgb(14, 165, 233)'}
+              />
+            </div>
+
+            {/* Controls */}
+            <div className="px-4 sm:px-6 py-6 space-y-4">
+              {/* Voice Input Section */}
+              <div className="flex flex-col items-center gap-4">
+                <MicrophoneButton
+                  isRecording={isRecording}
+                  onStart={handleMicStart}
+                  onStop={handleMicStop}
+                  disabled={isSpeaking || voiceChat.isProcessing}
+                  recordingTime={voiceChat.audioRecorder.recordingTime}
+                />
+
+                {isSpeaking && (
+                  <Button
+                    variant="danger"
+                    onClick={interruptAI}
+                  >
+                    Interrupt
+                  </Button>
+                )}
+              </div>
+
+              {/* Text Input Section */}
+              <Card glass className="p-4">
+                <div className="flex gap-2">
+                  <Input
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Or type a message..."
+                    disabled={isRecording || isSpeaking}
+                  />
+                  <Button
+                    variant="primary"
+                    onClick={handleSendMessage}
+                    disabled={!textInput.trim() || isRecording || isSpeaking}
+                    size="md"
+                    className="flex-shrink-0"
+                  >
+                    <Send className="w-5 h-5" />
+                  </Button>
+                </div>
+              </Card>
+
+              {/* Quick Actions */}
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => sendMessage('Hello, how are you?')}
+                  disabled={isRecording || isSpeaking || voiceChat.isProcessing}
+                >
+                  Hello
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => sendMessage('What time is it?')}
+                  disabled={isRecording || isSpeaking || voiceChat.isProcessing}
+                >
+                  Time
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => sendMessage('Tell me a joke')}
+                  disabled={isRecording || isSpeaking || voiceChat.isProcessing}
+                >
+                  Joke
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={clearConversation}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </main>
+      </div>
+    </div>
+  );
+}
