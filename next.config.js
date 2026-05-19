@@ -1,7 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   headers: async () => {
     return [
       {
@@ -15,9 +14,7 @@ const nextConfig = {
       },
     ];
   },
-  experimental: {
-    serverComponentsExternalPackages: ['openai'],
-  },
+  serverExternalPackages: ['openai'],
 };
 
 module.exports = nextConfig;

@@ -1,7 +1,11 @@
+/* stylelint-disable-next-line */
 @tailwind base;
+/* stylelint-disable-next-line */
 @tailwind components;
+/* stylelint-disable-next-line */
 @tailwind utilities;
 
+/* stylelint-disable */
 @layer base {
   body {
     @apply bg-dark-950 text-white;
@@ -11,7 +15,9 @@
     scroll-behavior: smooth;
   }
 }
+/* stylelint-enable */
 
+/* stylelint-disable */
 @layer utilities {
   .glass {
     @apply bg-white/5 backdrop-blur-xl border border-white/10;
@@ -25,6 +31,7 @@
     @apply transition-all duration-200 hover:shadow-lg hover:shadow-brand-500/50;
   }
 }
+/* stylelint-enable */
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
