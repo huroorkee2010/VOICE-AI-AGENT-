@@ -11,11 +11,18 @@ interface TTSRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
+    const hasValidElevenLabsKey = !!elevenLabsKey && !elevenLabsKey.includes('your-real');
+
     // Validate API key
-    if (!process.env.ELEVENLABS_API_KEY) {
+    if (!hasValidElevenLabsKey) {
       return NextResponse.json(
-        { success: false, error: 'ElevenLabs API key not configured' },
-        { status: 500 }
+        {
+          success: false,
+          error:
+            'ElevenLabs API key not configured or invalid. Please set ELEVENLABS_API_KEY with a real key.',
+        },
+        { status: 400 }
       );
     }
 
@@ -47,7 +54,7 @@ export async function POST(request: NextRequest) {
       {
         method: 'POST',
         headers: {
-          'xi-api-key': process.env.ELEVENLABS_API_KEY,
+          'xi-api-key': process.env.ELEVENLABS_API_KEY as string,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

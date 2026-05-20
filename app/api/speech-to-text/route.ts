@@ -85,26 +85,35 @@ export async function POST(request: NextRequest) {
 
     let transcript = '';
 
+    const hasDeepgramKey =
+      !!process.env.DEEPGRAM_API_KEY && !process.env.DEEPGRAM_API_KEY.includes('your-real');
+    const hasOpenAIKey =
+      !!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your-real');
+
     // Try Deepgram first if key is available
-    if (process.env.DEEPGRAM_API_KEY) {
+    if (hasDeepgramKey) {
       try {
         transcript = await transcribeWithDeepgram(audioBuffer, audioBlob.type || 'audio/webm');
       } catch (deepgramError) {
         console.warn('Deepgram failed, trying OpenAI Whisper:', deepgramError);
         // Fallback to OpenAI
-        if (process.env.OPENAI_API_KEY) {
+        if (hasOpenAIKey) {
           transcript = await transcribeWithOpenAI(audioBuffer, `audio-${Date.now()}.webm`);
         } else {
           throw new Error('No speech-to-text API configured');
         }
       }
-    } else if (process.env.OPENAI_API_KEY) {
+    } else if (hasOpenAIKey) {
       // Use OpenAI if Deepgram not available
       transcript = await transcribeWithOpenAI(audioBuffer, `audio-${Date.now()}.webm`);
     } else {
       return NextResponse.json(
-        { success: false, error: 'No speech-to-text API configured. Please set DEEPGRAM_API_KEY or OPENAI_API_KEY.' },
-        { status: 500 }
+        {
+          success: false,
+          error:
+            'No speech-to-text API configured. Please set DEEPGRAM_API_KEY or OPENAI_API_KEY, and avoid placeholder values like your-real-deepgram-api-key.',
+        },
+        { status: 400 }
       );
     }
 
