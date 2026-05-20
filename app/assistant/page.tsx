@@ -19,6 +19,7 @@ export default function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [textInput, setTextInput] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
+  const [isReady, setIsReady] = useState(true);
   const store = useConversationStore();
   const voiceChat = useVoiceChat();
 
@@ -31,10 +32,19 @@ export default function AssistantPage() {
     isProcessing,
   } = voiceChat;
 
+  const handleToggleReady = () => {
+    if (isReady) {
+      interruptAI();
+      stopListening();
+    }
+    setIsReady(!isReady);
+  };
+
   const { isRecording, isSpeaking, isListening } = store.audioState;
 
   // Get status for indicator
   const getStatus = (): 'idle' | 'listening' | 'processing' | 'speaking' => {
+    if (!isReady) return 'idle';
     if (isSpeaking) return 'speaking';
     if (voiceChat.isWaitingForAI || isProcessing) return 'processing';
     if (isListening) return 'listening';
@@ -107,7 +117,19 @@ export default function AssistantPage() {
 
             {/* Header Actions */}
             <div className="flex items-center gap-2">
-              <AIIndicator status={getStatus()} />
+              <Button
+                variant={isReady ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={handleToggleReady}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ${isReady ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25' : 'bg-dark-700/80 text-dark-200 border border-dark-600 hover:bg-dark-600'}`}
+              >
+                {isReady ? 'READY ON' : 'READY OFF'}
+              </Button>
+              <AIIndicator
+                status={getStatus()}
+                isReady={isReady}
+                message={!isReady ? 'Inactive' : undefined}
+              />
               <button
                 onClick={() => setFullscreen(!fullscreen)}
                 className="p-2 hover:bg-dark-700 rounded-lg transition-colors"
@@ -149,11 +171,29 @@ export default function AssistantPage() {
             <div className="px-4 sm:px-6 py-6 space-y-4">
               {/* Voice Input Section */}
               <div className="flex flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-3">
+                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ${isRecording ? 'bg-red-500/15 text-red-300 border border-red-500/30 animate-glow-pulse' : isReady ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30' : 'bg-dark-700/70 text-dark-300 border border-dark-700'}`}>
+                    <span className="w-2 h-2 rounded-full bg-current block" />
+                    {isRecording ? 'Recording...' : isReady ? 'Ready to record' : 'Assistant paused'}
+                  </div>
+                  <div className="text-xs text-dark-400 tracking-wide">
+                    {isRecording
+                      ? 'Live voice capture is active'
+                      : isListening
+                      ? 'Listening for speech input…'
+                      : isSpeaking
+                      ? 'Playing AI response…'
+                      : isReady
+                      ? 'Tap the mic and speak naturally'
+                      : 'Turn READY ON to enable voice input'}
+                  </div>
+                </div>
+
                 <MicrophoneButton
                   isRecording={isRecording}
                   onStart={handleMicStart}
                   onStop={handleMicStop}
-                  disabled={isSpeaking || voiceChat.isProcessing}
+                  disabled={!isReady || isSpeaking || voiceChat.isProcessing}
                   recordingTime={voiceChat.audioRecorder.recordingTime}
                 />
 
@@ -175,12 +215,12 @@ export default function AssistantPage() {
                     onChange={(e) => setTextInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Or type a message..."
-                    disabled={isRecording || isSpeaking || voiceChat.isProcessing}
+                    disabled={!isReady || isRecording || isSpeaking || voiceChat.isProcessing}
                   />
                   <Button
                     variant="primary"
                     onClick={handleSendMessage}
-                    disabled={!textInput.trim() || isRecording || isSpeaking || voiceChat.isProcessing}
+                    disabled={!isReady || !textInput.trim() || isRecording || isSpeaking || voiceChat.isProcessing}
                     size="md"
                     className="flex-shrink-0"
                   >
@@ -195,7 +235,7 @@ export default function AssistantPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() => sendMessage('Hello, how are you?')}
-                  disabled={isRecording || isSpeaking || voiceChat.isProcessing}
+                  disabled={!isReady || isRecording || isSpeaking || voiceChat.isProcessing}
                 >
                   Hello
                 </Button>
@@ -203,7 +243,7 @@ export default function AssistantPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() => sendMessage('What time is it?')}
-                  disabled={isRecording || isSpeaking || voiceChat.isProcessing}
+                  disabled={!isReady || isRecording || isSpeaking || voiceChat.isProcessing}
                 >
                   Time
                 </Button>
@@ -211,7 +251,7 @@ export default function AssistantPage() {
                   variant="secondary"
                   size="sm"
                   onClick={() => sendMessage('Tell me a joke')}
-                  disabled={isRecording || isSpeaking || voiceChat.isProcessing}
+                  disabled={!isReady || isRecording || isSpeaking || voiceChat.isProcessing}
                 >
                   Joke
                 </Button>

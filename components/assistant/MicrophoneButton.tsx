@@ -26,49 +26,48 @@ export const MicrophoneButton: React.FC<MicrophoneButtonProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      {/* Animated Microphone Button */}
       <button
         onClick={isRecording ? onStop : onStart}
         disabled={disabled}
         className={classNames(
-          'relative w-24 h-24 rounded-full flex items-center justify-center font-bold',
-          'transition-all duration-200 transform',
-          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'relative w-28 h-28 rounded-full flex items-center justify-center text-white',
+          'transition-all duration-300 transform',
+          'disabled:opacity-60 disabled:cursor-not-allowed',
           isRecording
-            ? 'bg-red-500 hover:bg-red-600 active:scale-95 shadow-lg shadow-red-500/50'
-            : 'bg-brand-500 hover:bg-brand-600 active:scale-95 shadow-lg shadow-brand-500/50'
+            ? 'bg-red-500 hover:bg-red-600 active:scale-95 shadow-[0_0_40px_rgba(239,68,68,0.30)]'
+            : 'bg-gradient-to-br from-brand-500 to-cyan-500 hover:scale-[1.02] active:scale-95 shadow-[0_20px_60px_rgba(56,189,248,0.25)]'
         )}
       >
-        {/* Pulse rings */}
         {isRecording && (
           <>
-            <div className="absolute inset-0 rounded-full bg-red-500 opacity-25 animate-pulse-ring" />
-            <div
-              className="absolute inset-0 rounded-full border-2 border-red-400 opacity-30 animate-pulse-ring"
-              style={{ animationDelay: '0.3s' }}
-            />
+            <div className="absolute inset-0 rounded-full bg-red-500/20 animate-pulse-ring" />
+            <div className="absolute inset-0 rounded-full border-2 border-red-400/30 animate-pulse-ring" />
           </>
         )}
 
-        {/* Icon */}
-        <div className="relative z-10 text-white">
+        <div className="relative z-10">
           {isRecording ? (
-            <Square className="w-12 h-12 fill-current" />
+            <Square className="w-14 h-14 fill-current" />
           ) : (
-            <Mic className="w-12 h-12" />
+            <Mic className="w-14 h-14" />
           )}
         </div>
       </button>
 
-      {/* Recording Time Display */}
-      {isRecording && (
-        <div className="text-center">
-          <p className="text-red-500 font-mono text-lg">
-            {formatTime(recordingTime)}
-          </p>
-          <p className="text-xs text-dark-400 mt-1">Recording...</p>
-        </div>
-      )}
+      <div className="flex flex-col items-center gap-1">
+        <span className={classNames(
+          'text-sm font-semibold tracking-wide transition-colors',
+          isRecording ? 'text-red-300' : disabled ? 'text-dark-400' : 'text-emerald-300'
+        )}>
+          {isRecording ? 'Recording Live' : disabled ? 'Microphone inactive' : 'Tap to speak'}
+        </span>
+        <span className={classNames(
+          'font-mono text-base transition-colors',
+          isRecording ? 'text-red-200' : 'text-dark-300'
+        )}>
+          {formatTime(recordingTime)}
+        </span>
+      </div>
     </div>
   );
 };

@@ -4,10 +4,11 @@ import classNames from 'classnames';
 
 interface AIIndicatorProps {
   status: 'idle' | 'listening' | 'processing' | 'speaking';
+  isReady?: boolean;
   message?: string;
 }
 
-export const AIIndicator: React.FC<AIIndicatorProps> = ({ status, message }) => {
+export const AIIndicator: React.FC<AIIndicatorProps> = ({ status, isReady = true, message }) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'listening':
@@ -41,13 +42,13 @@ export const AIIndicator: React.FC<AIIndicatorProps> = ({ status, message }) => 
         };
       default:
         return {
-          color: 'text-dark-400',
-          bgColor: 'bg-dark-700/50',
-          label: 'Ready',
+          color: isReady ? 'text-emerald-300' : 'text-dark-300',
+          bgColor: isReady ? 'bg-emerald-500/10' : 'bg-dark-700/70',
+          label: isReady ? 'Ready' : 'Inactive',
           icon: (
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="12" r="10" opacity="0.3" />
-              <circle cx="12" cy="12" r="6" opacity="0.6" />
+              <circle cx="12" cy="12" r="10" opacity="0.2" />
+              <circle cx="12" cy="12" r="6" opacity="0.4" />
               <circle cx="12" cy="12" r="2" />
             </svg>
           ),

@@ -16,7 +16,7 @@ export const useVoiceChat = () => {
   const store = useConversationStore();
   const audioRecorder = useAudioRecorder();
   const recognitionRef = useRef<any>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const transcriptProcessedRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
 
@@ -56,20 +56,8 @@ export const useVoiceChat = () => {
         });
       };
 
-      const stopSpeaking = () => {
-        store.setSpeaking(false);
-      };
-
-      try {
-        store.setSpeaking(true);
-
-        if (useElevenLabs) {
-          const blob = await apiClient.textToSpeech(text, voiceId);
-          await playAudioBlob(blob);
-          return;
-        }
-
-        if (!window.speechSynthesis) {
+      const speakWithBrowser = async () => {
+        if (typeof window === 'undefined' || !window.speechSynthesis) {
           return;
         }
 
@@ -80,15 +68,20 @@ export const useVoiceChat = () => {
           utterance.pitch = 1;
           utterance.volume = 1;
 
-          const voices = window.speechSynthesis.getVoices();
-          const voice = voices.find((voice) =>
-            voice.lang
-              .toLowerCase()
-              .startsWith(language.toLowerCase())
-          );
+          const setVoice = () => {
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find((voice) =>
+              voice.lang.toLowerCase().startsWith(language.toLowerCase())
+            );
+            if (voice) utterance.voice = voice;
+          };
 
-          if (voice) {
-            utterance.voice = voice;
+          setVoice();
+
+          if (!utterance.voice) {
+            window.speechSynthesis.onvoiceschanged = () => {
+              setVoice();
+            };
           }
 
           utterance.onend = () => {
@@ -102,6 +95,26 @@ export const useVoiceChat = () => {
           window.speechSynthesis.cancel();
           window.speechSynthesis.speak(utterance);
         });
+      };
+
+      const stopSpeaking = () => {
+        store.setSpeaking(false);
+      };
+
+      try {
+        store.setSpeaking(true);
+
+        if (useElevenLabs) {
+          try {
+            const blob = await apiClient.textToSpeech(text, voiceId);
+            await playAudioBlob(blob);
+            return;
+          } catch (error) {
+            console.warn('⚠️ ElevenLabs TTS failed, falling back to browser speech:', error);
+          }
+        }
+
+        await speakWithBrowser();
       } finally {
         stopSpeaking();
       }
@@ -115,17 +128,13 @@ export const useVoiceChat = () => {
         setIsWaitingForAI(true);
 
         console.log('🤖 Requesting AI response for:', userText);
-        
-        // Make API call with timeout safety and abort support
-        abortControllerRef.current?.abort();
-        const abortController = new AbortController();
-        abortControllerRef.current = abortController;
+
         setIsProcessing(true);
 
         let aiResponse = '';
         try {
           const response = await Promise.race([
-            apiClient.chat(userText, store.currentConversation?.messages, abortController.signal),
+            apiClient.chat(userText, store.currentConversation?.messages),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('timeout')), 35000)
             ),
@@ -134,9 +143,6 @@ export const useVoiceChat = () => {
         } catch (timeoutError) {
           if ((timeoutError as Error).message === 'timeout') {
             throw new Error('Request timeout: Webhook taking too long to respond');
-          }
-          if (abortController.signal.aborted) {
-            throw new Error('Request aborted by user');
           }
           throw timeoutError;
         }
@@ -225,67 +231,105 @@ export const useVoiceChat = () => {
     [handleAIResponse, store]
   );
 
-  const stopListeningInternal = useCallback(() => {
+  const handleAudioBlobTranscript = useCallback(
+    async (audioBlob: Blob | null) => {
+      if (!audioBlob) {
+        return;
+      }
+
+      try {
+        setIsWaitingForAI(true);
+        const response = await apiClient.speechToText(audioBlob);
+        const transcript = response.text?.trim();
+
+        if (!transcript) {
+          throw new Error('Speech transcription returned no text');
+        }
+
+        await processTranscript(transcript);
+      } catch (error) {
+        console.error('❌ Speech-to-text error:', error);
+        const errorMessage =
+          error instanceof Error ? error.message : CONSTANTS.ERRORS.AUDIO_RECORDING_ERROR;
+        store.setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsWaitingForAI(false);
+      }
+    },
+    [processTranscript, store]
+  );
+
+  const stopListeningInternal = useCallback(async () => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch {
+        // ignore stop errors
+      }
     }
 
-    audioRecorder.stopRecording().catch(() => {
-      // ignore cleanup errors
-    });
+    const audioBlob = await audioRecorder.stopRecording().catch(() => null);
 
     store.setRecording(false);
     store.setListening(false);
-  }, [audioRecorder, store]);
 
-  const startListening = useCallback(async () => {
-    if (!SpeechRecognitionConstructor) {
-      const errorMessage = 'Speech recognition is not supported in this browser.';
-      store.setError(errorMessage);
-      toast.error(errorMessage);
-      return;
+    if (!transcriptProcessedRef.current) {
+      await handleAudioBlobTranscript(audioBlob);
     }
 
+    transcriptProcessedRef.current = false;
+  }, [audioRecorder, handleAudioBlobTranscript, store]);
+
+  const startListening = useCallback(async () => {
+    transcriptProcessedRef.current = false;
+    store.setError('');
+    store.setRecording(true);
+    store.setListening(true);
+    setIsProcessing(false);
+
     try {
-      store.setRecording(true);
-      store.setListening(true);
-      setIsProcessing(false);
-
-      if (!recognitionRef.current) {
-        recognitionRef.current = new SpeechRecognitionConstructor();
-        recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = store.userPreferences.voiceSettings.language || 'en-US';
-        recognitionRef.current.maxAlternatives = 1;
-
-        recognitionRef.current.onresult = async (event: any) => {
-          const lastResult = event.results[event.results.length - 1];
-          const transcript = lastResult[0]?.transcript || '';
-
-          if (lastResult.isFinal && transcript.trim()) {
-            stopListeningInternal();
-            await processTranscript(transcript);
-          }
-        };
-
-        recognitionRef.current.onerror = (event: any) => {
-          const errorMessage =
-            event.error === 'not-allowed' || event.error === 'service-not-allowed'
-              ? CONSTANTS.ERRORS.MICROPHONE_NOT_AVAILABLE
-              : `Speech recognition error: ${event.error || 'unknown'}`;
-
-          store.setError(errorMessage);
-          toast.error(errorMessage);
-          stopListeningInternal();
-        };
-
-        recognitionRef.current.onend = () => {
-          stopListeningInternal();
-        };
-      }
-
       await audioRecorder.startRecording();
-      recognitionRef.current.start();
+
+      if (SpeechRecognitionConstructor) {
+        if (!recognitionRef.current) {
+          recognitionRef.current = new SpeechRecognitionConstructor();
+          recognitionRef.current.continuous = false;
+          recognitionRef.current.interimResults = true;
+          recognitionRef.current.lang = store.userPreferences.voiceSettings.language || 'en-US';
+          recognitionRef.current.maxAlternatives = 1;
+
+          recognitionRef.current.onresult = async (event: any) => {
+            const lastResult = event.results[event.results.length - 1];
+            const transcript = lastResult[0]?.transcript || '';
+
+            if (lastResult.isFinal && transcript.trim()) {
+              transcriptProcessedRef.current = true;
+              await stopListeningInternal();
+              await processTranscript(transcript);
+            }
+          };
+
+          recognitionRef.current.onerror = (event: any) => {
+            const errorMessage =
+              event.error === 'not-allowed' || event.error === 'service-not-allowed'
+                ? CONSTANTS.ERRORS.MICROPHONE_NOT_AVAILABLE
+                : `Speech recognition error: ${event.error || 'unknown'}`;
+
+            store.setError(errorMessage);
+            toast.error(errorMessage);
+            stopListeningInternal();
+          };
+
+          recognitionRef.current.onend = () => {
+            if (!transcriptProcessedRef.current) {
+              stopListeningInternal();
+            }
+          };
+        }
+
+        recognitionRef.current.start();
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : CONSTANTS.ERRORS.AUDIO_RECORDING_ERROR;
@@ -297,7 +341,7 @@ export const useVoiceChat = () => {
   }, [audioRecorder, processTranscript, stopListeningInternal, store]);
 
   const stopListening = useCallback(async () => {
-    stopListeningInternal();
+    await stopListeningInternal();
   }, [stopListeningInternal]);
 
   const sendMessage = useCallback(
@@ -325,9 +369,6 @@ export const useVoiceChat = () => {
       window.speechSynthesis.cancel();
     }
     // Abort any pending chat request
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-
     // Reset all states
     store.setSpeaking(false);
     setIsWaitingForAI(false);
@@ -347,8 +388,6 @@ export const useVoiceChat = () => {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
-      abortControllerRef.current?.abort();
-      abortControllerRef.current = null;
       audioRecorder.cleanup();
     };
   }, [audioRecorder]);
