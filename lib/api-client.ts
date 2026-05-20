@@ -53,21 +53,18 @@ class APIClient {
     const formData = new FormData();
     formData.append('audio', audioBlob);
 
-    const response = await this.client.post<APIResponse<{ text: string }>>(
-      CONSTANTS.API.SPEECH_TO_TEXT,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      }
-    );
+    const url = `${this.baseURL}${CONSTANTS.API.SPEECH_TO_TEXT}`;
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || 'Speech to text failed');
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Speech to text failed');
     }
 
-    return response.data.data!;
+    return data.data;
   }
 
   /**

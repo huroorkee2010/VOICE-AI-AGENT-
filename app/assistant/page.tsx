@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -16,7 +16,7 @@ import { useConversationStore } from '@/store/conversation';
 import { Send, Menu, X, Maximize2, Minimize2 } from 'lucide-react';
 
 export default function AssistantPage() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
   const [isReady, setIsReady] = useState(true);
@@ -41,6 +41,20 @@ export default function AssistantPage() {
   };
 
   const { isRecording, isSpeaking, isListening } = store.audioState;
+  const touchStartX = useRef<number | null>(null);
+
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    if (sidebarOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = originalOverflow || '';
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow || '';
+    };
+  }, [sidebarOpen]);
 
   // Get status for indicator
   const getStatus = (): 'idle' | 'listening' | 'processing' | 'speaking' => {
@@ -76,6 +90,20 @@ export default function AssistantPage() {
     stopListening();
   };
 
+  const handleOverlayTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartX.current = event.touches[0]?.clientX || null;
+  };
+
+  const handleOverlayTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null) return;
+    const currentX = event.touches[0]?.clientX || 0;
+    const deltaX = currentX - touchStartX.current;
+    if (deltaX < -50) {
+      setSidebarOpen(false);
+      touchStartX.current = null;
+    }
+  };
+
   return (
     <div className={`min-h-screen flex flex-col bg-dark-950 ${fullscreen ? 'fixed inset-0 z-50' : ''}`}>
       {/* Navbar */}
@@ -90,12 +118,23 @@ export default function AssistantPage() {
           onCreateNew={() => store.createConversation()}
           onDeleteConversation={(id) => store.deleteConversation(id)}
           isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
         />
+
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 z-20 bg-black/40 backdrop-blur-sm md:hidden transition-opacity duration-300"
+            onClick={() => setSidebarOpen(false)}
+            onTouchStart={handleOverlayTouchStart}
+            onTouchMove={handleOverlayTouchMove}
+            aria-hidden="true"
+          />
+        )}
 
         {/* Main Content */}
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden md:ml-64">
           {/* Header */}
-          <header className="border-b border-dark-700 bg-dark-900/50 backdrop-blur-sm px-4 sm:px-6 py-4 flex items-center justify-between">
+          <header className="border-b border-dark-700 bg-dark-900/50 backdrop-blur-sm px-4 sm:px-6 py-4 flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}

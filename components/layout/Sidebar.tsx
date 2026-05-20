@@ -1,4 +1,4 @@
-import { MessageSquare, Trash2, Plus } from 'lucide-react';
+import { MessageSquare, Trash2, Plus, X } from 'lucide-react';
 import { Conversation } from '@/lib/types';
 import { Button } from '@/components/ui/Button';
 import classNames from 'classnames';
@@ -10,6 +10,7 @@ interface SidebarProps {
   onCreateNew: () => void;
   onDeleteConversation: (id: string) => void;
   isOpen: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -19,6 +20,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCreateNew,
   onDeleteConversation,
   isOpen,
+  onClose,
 }) => {
   return (
     <aside
@@ -32,15 +34,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-dark-700">
         <h2 className="text-lg font-bold text-white">Conversations</h2>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onCreateNew}
-          className="p-2 h-auto w-auto"
-          title="New conversation"
-        >
-          <Plus className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCreateNew}
+            className="p-2 h-auto w-auto"
+            title="New conversation"
+          >
+            <Plus className="w-5 h-5" />
+          </Button>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="md:hidden p-2 rounded-lg hover:bg-dark-700 transition-colors"
+              aria-label="Close sidebar"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Conversations List */}

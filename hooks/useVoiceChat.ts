@@ -16,6 +16,7 @@ export const useVoiceChat = () => {
   const store = useConversationStore();
   const audioRecorder = useAudioRecorder();
   const recognitionRef = useRef<any>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const transcriptProcessedRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
@@ -131,10 +132,15 @@ export const useVoiceChat = () => {
 
         setIsProcessing(true);
 
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        abortControllerRef.current = new AbortController();
+
         let aiResponse = '';
         try {
           const response = await Promise.race([
-            apiClient.chat(userText, store.currentConversation?.messages),
+            apiClient.chat(userText, store.currentConversation?.messages, abortControllerRef.current.signal),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('timeout')), 35000)
             ),
@@ -198,6 +204,8 @@ export const useVoiceChat = () => {
             errorMessage = '⚠️ CORS error: Cross-origin request blocked';
           } else if (msg.includes('invalid response')) {
             errorMessage = '⚠️ Server returned invalid data format';
+          } else if (msg.includes('canceled') || msg.includes('aborted')) {
+            errorMessage = '⚠️ Request was canceled';
           } else {
             errorMessage = `⚠️ ${error.message}`;
           }
@@ -207,6 +215,10 @@ export const useVoiceChat = () => {
         toast.error(errorMessage);
       } finally {
         setIsProcessing(false);
+        setIsWaitingForAI(false);
+        if (abortControllerRef.current) {
+          abortControllerRef.current = null;
+        }
       }
     },
     [speakText, store]
@@ -369,6 +381,10 @@ export const useVoiceChat = () => {
       window.speechSynthesis.cancel();
     }
     // Abort any pending chat request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     // Reset all states
     store.setSpeaking(false);
     setIsWaitingForAI(false);
