@@ -84,7 +84,7 @@ const mockResponses: { [key: string]: string } = {
   'time': 'I don\'t have real-time capabilities, but you can check your system clock for the current time.',
   'joke': 'Why did the AI go to school? To improve its learning algorithms! 😄',
   'test': 'This is a test response from the mock AI.',
-  'hi': 'Hi there! Welcome to Jarvis AI. How can I help you?',
+  'hi': 'Hi there! Welcome to HUVOICE AI. How can I help you?',
 };
 
 function getMockResponse(message: string): string {

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const WEBHOOK_URL = 'https://huassist2010.app.n8n.cloud/webhook/jarvis-ai';
+const WEBHOOK_URL =
+  process.env.AI_WEBHOOK_URL ||
+  process.env.NEXT_PUBLIC_AI_WEBHOOK_URL ||
+  'https://huassist2010.app.n8n.cloud/webhook/huvoice-ai';
 // DEBUG MODE: Set to true to use mock responses instead of real webhook
 const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 const USE_MOCK_RESPONSES = process.env.DEBUG_MOCK_RESPONSES === 'true';
@@ -17,7 +20,7 @@ const mockResponses: { [key: string]: string } = {
   'time': 'I don\'t have real-time capabilities, but you can check your system clock for the current time.',
   'joke': 'Why did the AI go to school? To improve its learning algorithms! 😄',
   'test': 'This is a test response from the mock AI. The webhook integration is working!',
-  'hi': 'Hi there! Welcome to Jarvis AI. How can I help you?',
+  'hi': 'Hi there! Welcome to HUVOICE AI. How can I help you?',
 };
 
 function getMockResponse(message: string): string {

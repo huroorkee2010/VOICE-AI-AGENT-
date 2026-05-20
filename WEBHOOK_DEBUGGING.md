@@ -1,7 +1,7 @@
-# Webhook Debugging Guide - Jarvis AI Voice Assistant
+# Webhook Debugging Guide - HUVOICE AI Voice Assistant
 
 ## Current Status
-- ✅ **Webhook URL is reachable**: `https://huassist2010.app.n8n.cloud/webhook/jarvis-ai` (HTTP 200)
+- ✅ **Webhook URL is reachable**: `https://huassist2010.app.n8n.cloud/webhook/huvoice-ai` (HTTP 200)
 - ❌ **Webhook returns empty response body** (0 bytes)
 - ❌ **AI responses not returned** to the chatbox
 
@@ -11,7 +11,7 @@ The n8n workflow is configured to accept requests, but it's not returning any da
 ### Server Logs Show:
 ```
 📨 Chat request received: { message: 'Hello, how are you?', historyLength: 0 }
-🔗 Forwarding to webhook: https://huassist2010.app.n8n.cloud/webhook/jarvis-ai
+🔗 Forwarding to webhook: https://huassist2010.app.n8n.cloud/webhook/huvoice-ai
 📦 Webhook response status: 200
 📦 Webhook response length: 0
 📦 Webhook response preview: 
@@ -22,7 +22,7 @@ The n8n workflow is configured to accept requests, but it's not returning any da
 
 ### Step 1: Check Your n8n Webhook Trigger
 1. Open n8n dashboard: https://huassist2010.app.n8n.cloud
-2. Open the "jarvis-ai" workflow
+2. Open the "huvoice-ai" workflow
 3. Check the **Webhook trigger node** settings
 4. Ensure "Respond with" is set to **"Last node output"** or **"Expression"**
 
@@ -82,7 +82,7 @@ In the last node of your workflow (before responding to webhook):
 1. Open terminal
 2. Run this command (replace with your message):
 ```bash
-curl -X POST https://huassist2010.app.n8n.cloud/webhook/jarvis-ai \
+curl -X POST https://huassist2010.app.n8n.cloud/webhook/huvoice-ai \
   -H "Content-Type: application/json" \
   -d '{"message":"Hello, how are you?"}'
 ```
@@ -94,7 +94,7 @@ Expected response:
 }
 ```
 
-### Step 6: Test in Jarvis AI
+### Step 6: Test in HUVOICE AI
 
 Once the webhook returns proper data:
 1. Return to http://localhost:3003/assistant
@@ -127,12 +127,12 @@ Once the webhook returns proper data:
 ### Test webhook directly:
 ```bash
 # Send test message
-curl -X POST https://huassist2010.app.n8n.cloud/webhook/jarvis-ai \
+curl -X POST https://huassist2010.app.n8n.cloud/webhook/huvoice-ai \
   -H "Content-Type: application/json" \
   -d '{"message":"test"}'
 
 # Check if webhook exists
-curl -i https://huassist2010.app.n8n.cloud/webhook/jarvis-ai
+curl -i https://huassist2010.app.n8n.cloud/webhook/huvoice-ai
 ```
 
 ### Test frontend API:

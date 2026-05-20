@@ -45,7 +45,7 @@ export default function Home() {
             className="text-center"
           >
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6">
-              Meet <span className="gradient-text">Jarvis</span>, Your AI Voice Assistant
+              Meet <span className="gradient-text">HUVOICE</span>, Your AI Voice Assistant
             </h1>
             <p className="text-xl text-dark-400 mb-8 max-w-2xl mx-auto">
               Experience the future of AI interaction. Talk naturally with advanced AI that
@@ -60,7 +60,7 @@ export default function Home() {
             >
               <Link href="/assistant">
                 <Button size="lg" variant="primary">
-                  Launch Assistant
+                  Launch HUVOICE AI
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
@@ -160,7 +160,7 @@ export default function Home() {
             </p>
             <Link href="/assistant">
               <Button size="lg" variant="primary">
-                Open Jarvis AI
+                Open HUVOICE AI
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>

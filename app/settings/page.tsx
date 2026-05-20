@@ -78,7 +78,7 @@ export default function SettingsPage() {
           className="mb-8"
         >
           <h1 className="text-4xl font-bold mb-2">Settings</h1>
-          <p className="text-dark-400">Customize your Jarvis AI experience</p>
+          <p className="text-dark-400">Customize your HUVOICE AI experience</p>
         </motion.div>
 
         {/* Saved Message */}

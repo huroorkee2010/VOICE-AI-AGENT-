@@ -1,4 +1,4 @@
-# 🔑 How to Get API Keys for Jarvis AI
+# 🔑 How to Get API Keys for HUVOICE AI
 
 ## Current Status
 ✅ **Application Running**: Successfully running on http://localhost:3000  
@@ -156,4 +156,4 @@ After adding API keys:
 
 ---
 
-Once you have the keys in `.env.local`, your Jarvis AI Agent will be **fully functional**! 🎉
+Once you have the keys in `.env.local`, your HUVOICE AI Agent will be **fully functional**! 🎉

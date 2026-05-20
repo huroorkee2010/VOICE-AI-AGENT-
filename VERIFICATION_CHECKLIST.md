@@ -1,4 +1,4 @@
-# ✅ Jarvis AI Startup Verification Checklist
+# ✅ HUVOICE AI Startup Verification Checklist
 
 Complete this checklist to ensure everything is set up correctly.
 
@@ -214,7 +214,7 @@ Complete this checklist to ensure everything is set up correctly.
 
 ## 🎉 Ready to Launch!
 
-If all items are checked, your Jarvis AI Voice Agent is ready to use!
+If all items are checked, your HUVOICE AI Voice Agent is ready to use!
 
 ### Next Steps:
 1. Keep the dev server running: `npm run dev`
@@ -234,4 +234,4 @@ If you encounter issues:
 
 ---
 
-**Happy talking with Jarvis AI!** 🤖
+**Happy talking with HUVOICE AI!** 🤖

@@ -25,7 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       className={classNames(
         'fixed inset-y-0 left-0 z-30 w-64 bg-dark-900 border-r border-dark-700',
         'transform transition-transform duration-300',
-        'md:relative md:translate-x-0 md:inset-auto md:z-0',
+        'md:fixed md:translate-x-0 md:inset-y-0 md:left-0 md:z-40',
         isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}
     >
@@ -100,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Footer */}
       <div className="border-t border-dark-700 p-4 text-xs text-dark-500">
-        <p>© 2024 Jarvis AI</p>
+        <p>© 2024 HUVOICE AI</p>
       </div>
     </aside>
   );

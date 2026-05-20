@@ -1,6 +1,6 @@
-# Jarvis AI - Production-Ready Voice AI Agent
+# HUVOICE AI - Production-Ready Voice AI Agent
 
-A modern, production-ready real-time Voice AI Agent built with **Next.js**, **React**, **OpenAI**, and **ElevenLabs**. Have natural conversations with an AI that listens to your voice and responds with human-like speech.
+A modern, production-ready real-time HUVOICE AI voice agent built with **Next.js**, **React**, **OpenAI**, and **ElevenLabs**. Have natural conversations with an AI that listens to your voice and responds with human-like speech.
 
 ## ✨ Features
 
@@ -239,8 +239,8 @@ CMD ["npm", "start"]
 
 Build and run:
 ```bash
-docker build -t jarvis-ai .
-docker run -p 3000:3000 -e OPENAI_API_KEY=sk-... jarvis-ai
+docker build -t huvoice-ai .
+docker run -p 3000:3000 -e OPENAI_API_KEY=sk-... huvoice-ai
 ```
 
 ## 🔌 API Endpoints

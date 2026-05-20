@@ -75,7 +75,8 @@ class APIClient {
    */
   async chat(
     message: string,
-    conversationHistory?: any[]
+    conversationHistory?: any[],
+    signal?: AbortSignal
   ): Promise<{ message: string; tokens?: number }> {
     console.log('📤 Sending chat message:', { message, historyLength: conversationHistory?.length });
     
@@ -85,6 +86,8 @@ class APIClient {
       >(CONSTANTS.API.CHAT, {
         message,
         history: conversationHistory,
+      }, {
+        signal,
       });
 
       if (!response.data.success) {
@@ -117,6 +120,24 @@ class APIClient {
         responseType: 'blob',
       }
     );
+
+    const contentTypeHeader = response.headers['content-type'];
+    const contentType =
+      typeof contentTypeHeader === 'string'
+        ? contentTypeHeader
+        : Array.isArray(contentTypeHeader)
+        ? contentTypeHeader.join(', ')
+        : '';
+
+    if (contentType.includes('application/json')) {
+      const textBody = await new Response(response.data).text();
+      try {
+        const json = JSON.parse(textBody);
+        throw new Error(json.error || 'Text to speech failed');
+      } catch {
+        throw new Error(textBody || 'Text to speech failed');
+      }
+    }
 
     return response.data;
   }

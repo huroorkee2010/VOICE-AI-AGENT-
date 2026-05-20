@@ -1,4 +1,4 @@
-# ✅ JARVIS AI - Setup Complete & Status Report
+# ✅ HUVOICE AI - Setup Complete & Status Report
 
 ## 🎉 Current Status
 
@@ -153,7 +153,7 @@ DEEPGRAM_API_KEY=your-real-key-here
 ## 📊 Architecture Overview
 
 ```
-Jarvis AI Frontend (Next.js + React)
+HUVOICE AI Frontend (Next.js + React)
         ↓
     Components Layer (UI Components)
         ↓

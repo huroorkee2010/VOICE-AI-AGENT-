@@ -11,21 +11,21 @@ Your AI Voice Assistant is ready to deploy to Vercel! This guide walks you throu
 ```bash
 # Install GitHub CLI from https://cli.github.com/ first, then:
 gh auth login
-gh repo create jarvis-ai-voice-assistant --source=. --remote=origin --push
+gh repo create huvoice-ai-voice-assistant --source=. --remote=origin --push
 ```
 
 ### Option B: Manual GitHub Setup
 1. Go to [GitHub.com](https://github.com) and sign in
 2. Click **New** (top left) → **New repository**
-3. Repository name: `jarvis-ai-voice-assistant`
-4. Description: `AI Voice Assistant with Jarvis AI`
+3. Repository name: `huvoice-ai-voice-assistant`
+4. Description: `AI Voice Assistant with HUVOICE AI`
 5. Choose: **Public** or **Private**
 6. Click **Create repository**
 
 Then run these commands:
 ```bash
 cd "d:\Users\pop\Desktop\AI voice AGENT"
-git remote add origin https://github.com/YOUR_USERNAME/jarvis-ai-voice-assistant.git
+git remote add origin https://github.com/YOUR_USERNAME/huvoice-ai-voice-assistant.git
 git branch -M main
 git push -u origin main
 ```
@@ -75,7 +75,7 @@ Follow the prompts:
 - Link to GitHub repo? **Yes**
 - Continue with GitHub account? **Yes**
 - Deploy to existing project? **No** (first time)
-- Project name: `jarvis-ai-voice-assistant`
+- Project name: `huvoice-ai-voice-assistant`
 - Framework: **Next.js**
 - Root directory: `./`
 
@@ -83,7 +83,7 @@ Follow the prompts:
 1. Go to [Vercel.com](https://vercel.com)
 2. Sign in with GitHub
 3. Click **Add New...** → **Project**
-4. Search for `jarvis-ai-voice-assistant`
+4. Search for `huvoice-ai-voice-assistant`
 5. Click **Import**
 6. Configure project:
    - **Framework Preset:** Next.js (auto-detected)
@@ -109,7 +109,7 @@ Once deployment is complete:
 
 1. **View Live Site:**
    - Click **Visit** in deployment success message
-   - Or go to `https://jarvis-ai-voice-assistant-{username}.vercel.app`
+   - Or go to `https://huvoice-ai-voice-assistant-{username}.vercel.app`
 
 2. **Test Chat:**
    - Open the assistant page

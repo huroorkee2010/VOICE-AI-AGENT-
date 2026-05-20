@@ -16,6 +16,7 @@ export const useVoiceChat = () => {
   const store = useConversationStore();
   const audioRecorder = useAudioRecorder();
   const recognitionRef = useRef<any>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
 
@@ -27,56 +28,104 @@ export const useVoiceChat = () => {
 
   const speakText = useCallback(
     async (text: string) => {
-      if (typeof window === 'undefined' || !window.speechSynthesis) return;
+      if (typeof window === 'undefined') return;
 
-      return new Promise<void>((resolve) => {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = store.userPreferences.voiceSettings.language || 'en-US';
-        utterance.rate = 1;
-        utterance.pitch = 1;
-        utterance.volume = 1;
+      const useElevenLabs = process.env.NEXT_PUBLIC_USE_ELEVENLABS === 'true';
+      const voiceId = store.userPreferences.voiceSettings.voiceId;
+      const language = store.userPreferences.voiceSettings.language || 'en-US';
 
-        const voices = window.speechSynthesis.getVoices();
-        const voice = voices.find((voice) =>
-          voice.lang
-            .toLowerCase()
-            .startsWith(
-              (store.userPreferences.voiceSettings.language || 'en-US').toLowerCase()
-            )
-        );
+      const playAudioBlob = async (blob: Blob) => {
+        const url = URL.createObjectURL(blob);
+        return new Promise<void>((resolve) => {
+          const audio = new Audio(url);
 
-        if (voice) {
-          utterance.voice = voice;
+          audio.onended = () => {
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+
+          audio.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve();
+          };
+
+          audio.play().catch(() => {
+            URL.revokeObjectURL(url);
+            resolve();
+          });
+        });
+      };
+
+      const stopSpeaking = () => {
+        store.setSpeaking(false);
+      };
+
+      try {
+        store.setSpeaking(true);
+
+        if (useElevenLabs) {
+          const blob = await apiClient.textToSpeech(text, voiceId);
+          await playAudioBlob(blob);
+          return;
         }
 
-        utterance.onend = () => {
-          resolve();
-        };
+        if (!window.speechSynthesis) {
+          return;
+        }
 
-        utterance.onerror = () => {
-          resolve();
-        };
+        return new Promise<void>((resolve) => {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = language;
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          utterance.volume = 1;
 
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(utterance);
-      });
+          const voices = window.speechSynthesis.getVoices();
+          const voice = voices.find((voice) =>
+            voice.lang
+              .toLowerCase()
+              .startsWith(language.toLowerCase())
+          );
+
+          if (voice) {
+            utterance.voice = voice;
+          }
+
+          utterance.onend = () => {
+            resolve();
+          };
+
+          utterance.onerror = () => {
+            resolve();
+          };
+
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utterance);
+        });
+      } finally {
+        stopSpeaking();
+      }
     },
-    [store.userPreferences.voiceSettings.language]
+    [store, apiClient]
   );
 
   const handleAIResponse = useCallback(
     async (userText: string) => {
       try {
         setIsWaitingForAI(true);
-        store.setSpeaking(true);
 
         console.log('🤖 Requesting AI response for:', userText);
         
-        // Make API call with timeout safety
+        // Make API call with timeout safety and abort support
+        abortControllerRef.current?.abort();
+        const abortController = new AbortController();
+        abortControllerRef.current = abortController;
+        setIsProcessing(true);
+
         let aiResponse = '';
         try {
           const response = await Promise.race([
-            apiClient.chat(userText, store.currentConversation?.messages),
+            apiClient.chat(userText, store.currentConversation?.messages, abortController.signal),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('timeout')), 35000)
             ),
@@ -85,6 +134,9 @@ export const useVoiceChat = () => {
         } catch (timeoutError) {
           if ((timeoutError as Error).message === 'timeout') {
             throw new Error('Request timeout: Webhook taking too long to respond');
+          }
+          if (abortController.signal.aborted) {
+            throw new Error('Request aborted by user');
           }
           throw timeoutError;
         }
@@ -117,12 +169,13 @@ export const useVoiceChat = () => {
         }
 
         setIsWaitingForAI(false);
-        store.setSpeaking(false);
+        setIsProcessing(false);
       } catch (error) {
         console.error('❌ AI response error:', error);
         
         // Ensure state is reset even on error
         setIsWaitingForAI(false);
+        setIsProcessing(false);
         store.setSpeaking(false);
         
         let errorMessage: string = CONSTANTS.ERRORS.API_ERROR;
@@ -146,6 +199,8 @@ export const useVoiceChat = () => {
         
         store.setError(errorMessage);
         toast.error(errorMessage);
+      } finally {
+        setIsProcessing(false);
       }
     },
     [speakText, store]
@@ -269,6 +324,10 @@ export const useVoiceChat = () => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+    // Abort any pending chat request
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+
     // Reset all states
     store.setSpeaking(false);
     setIsWaitingForAI(false);
@@ -288,6 +347,8 @@ export const useVoiceChat = () => {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
       audioRecorder.cleanup();
     };
   }, [audioRecorder]);

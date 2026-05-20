@@ -1,4 +1,4 @@
-# 🚀 JARVIS AI - Complete Setup Guide
+# 🚀 HUVOICE AI - Complete Setup Guide
 
 ## ✅ What You Got
 
@@ -164,7 +164,7 @@ Edit `.env.local`:
 
 Edit `lib/constants.ts` in `SYSTEM_PROMPTS`:
 ```typescript
-ASSISTANT: `You are Jarvis, ...` // Edit this
+ASSISTANT: `You are HUVOICE, ...` // Edit this
 ```
 
 ### Change UI Colors
@@ -213,7 +213,7 @@ git push -u origin main
 **DigitalOcean:**
 ```bash
 # Create app.yaml
-name: jarvis-ai
+name: huvoice-ai
 services:
 - name: web
   github:
@@ -376,4 +376,4 @@ Then open http://localhost:3000 and enjoy! 🎉
 
 **Ready to deploy?** Follow the deployment section above.
 
-**Happy talking with Jarvis AI!** 🤖🎤
+**Happy talking with HUVOICE AI!** 🤖🎤

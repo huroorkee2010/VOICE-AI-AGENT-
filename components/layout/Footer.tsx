@@ -5,7 +5,7 @@ export const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div>
-            <h3 className="text-lg font-bold text-white mb-2">Jarvis AI</h3>
+            <h3 className="text-lg font-bold text-white mb-2">HUVOICE AI</h3>
             <p className="text-dark-400 text-sm">
               Production-ready Voice AI Assistant powered by OpenAI and ElevenLabs.
             </p>

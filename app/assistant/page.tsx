@@ -28,6 +28,7 @@ export default function AssistantPage() {
     sendMessage,
     interruptAI,
     clearConversation,
+    isProcessing,
   } = voiceChat;
 
   const { isRecording, isSpeaking, isListening } = store.audioState;
@@ -35,7 +36,8 @@ export default function AssistantPage() {
   // Get status for indicator
   const getStatus = (): 'idle' | 'listening' | 'processing' | 'speaking' => {
     if (isSpeaking) return 'speaking';
-    if (isListening) return 'processing';
+    if (voiceChat.isWaitingForAI || isProcessing) return 'processing';
+    if (isListening) return 'listening';
     if (isRecording) return 'listening';
     return 'idle';
   };
@@ -81,7 +83,7 @@ export default function AssistantPage() {
         />
 
         {/* Main Content */}
-        <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden md:ml-64">
           {/* Header */}
           <header className="border-b border-dark-700 bg-dark-900/50 backdrop-blur-sm px-4 sm:px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -155,7 +157,7 @@ export default function AssistantPage() {
                   recordingTime={voiceChat.audioRecorder.recordingTime}
                 />
 
-                {isSpeaking && (
+                {(voiceChat.isWaitingForAI || isSpeaking || isProcessing) && (
                   <Button
                     variant="danger"
                     onClick={interruptAI}
@@ -173,12 +175,12 @@ export default function AssistantPage() {
                     onChange={(e) => setTextInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Or type a message..."
-                    disabled={isRecording || isSpeaking}
+                    disabled={isRecording || isSpeaking || voiceChat.isProcessing}
                   />
                   <Button
                     variant="primary"
                     onClick={handleSendMessage}
-                    disabled={!textInput.trim() || isRecording || isSpeaking}
+                    disabled={!textInput.trim() || isRecording || isSpeaking || voiceChat.isProcessing}
                     size="md"
                     className="flex-shrink-0"
                   >

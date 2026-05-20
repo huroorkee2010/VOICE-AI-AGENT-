@@ -3,8 +3,8 @@ import { Toaster } from 'react-hot-toast';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Jarvis AI - Voice Assistant',
-  description: 'Production-ready real-time Voice AI Agent using Next.js, OpenAI, and ElevenLabs',
+  title: 'HUVOICE AI - Voice Assistant',
+  description: 'Production-ready real-time HUVOICE AI voice agent built with Next.js, OpenAI, and ElevenLabs',
   icons: {
     icon: '/favicon.ico',
   },

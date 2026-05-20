@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Settings, MessageSquare, Home } from 'lucide-react';
+import { useState } from 'react';
+import { Settings, MessageSquare, Home, Menu, X } from 'lucide-react';
 import classNames from 'classnames';
 
 interface NavbarProps {
@@ -7,8 +8,10 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
-    <nav className="bg-dark-900/80 backdrop-blur-lg border-b border-dark-700 sticky top-0 z-40">
+    <nav className="bg-dark-900/80 backdrop-blur-lg border-b border-dark-700 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -19,7 +22,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
               </svg>
             </div>
             <span className="font-bold text-white hidden sm:block group-hover:text-brand-400 transition-colors">
-              Jarvis AI
+              HUVOICE AI
             </span>
           </Link>
 
@@ -31,13 +34,32 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
             <NavLink href="/settings" label="Settings" icon={<Settings className="w-4 h-4" />} active={currentPage === 'settings'} />
           </div>
 
-          {/* Mobile Menu Placeholder */}
-          <div className="md:hidden">
-            <button className="p-2 rounded-lg hover:bg-dark-700 transition-colors">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+          <div className="relative md:hidden">
+            <button
+              onClick={() => setMobileOpen((prev) => !prev)}
+              className="p-2 rounded-lg hover:bg-dark-700 transition-colors"
+              aria-label="Toggle navigation"
+            >
+              {mobileOpen ? (
+                <X className="w-5 h-5 text-white" />
+              ) : (
+                <Menu className="w-5 h-5 text-white" />
+              )}
             </button>
+
+            <div
+              className={classNames(
+                'absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-2xl border border-dark-700 bg-dark-900/95 shadow-xl backdrop-blur-xl transition-all duration-300',
+                mobileOpen ? 'max-h-72 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+              )}
+            >
+              <div className="flex flex-col px-3 py-3 gap-2">
+                <NavLink href="/" label="Home" icon={<Home className="w-4 h-4" />} active={currentPage === 'home'} />
+                <NavLink href="/assistant" label="Assistant" icon={<MessageSquare className="w-4 h-4" />} active={currentPage === 'assistant'} />
+                <NavLink href="/history" label="History" icon={<MessageSquare className="w-4 h-4" />} active={currentPage === 'history'} />
+                <NavLink href="/settings" label="Settings" icon={<Settings className="w-4 h-4" />} active={currentPage === 'settings'} />
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -64,7 +86,7 @@ const NavLink: React.FC<NavLinkProps> = ({ href, label, icon, active }) => {
       )}
     >
       {icon}
-      <span className="hidden lg:block">{label}</span>
+      <span>{label}</span>
     </Link>
   );
 };
