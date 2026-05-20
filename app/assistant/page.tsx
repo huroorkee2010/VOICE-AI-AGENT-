@@ -11,6 +11,8 @@ import { MicrophoneButton } from '@/components/assistant/MicrophoneButton';
 import { AIIndicator } from '@/components/assistant/AIIndicator';
 import { WaveformAnimation } from '@/components/assistant/WaveformAnimation';
 import { ConversationHistory } from '@/components/assistant/ConversationHistory';
+import { ConfigBanner } from '@/components/assistant/ConfigBanner';
+import { useDiagnostics } from '@/hooks/useDiagnostics';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { useConversationStore } from '@/store/conversation';
 import { Send, Menu, X, Maximize2, Minimize2 } from 'lucide-react';
@@ -42,6 +44,11 @@ export default function AssistantPage() {
 
   const { isRecording, isSpeaking, isListening } = store.audioState;
   const touchStartX = useRef<number | null>(null);
+  const { diagnostics, testApis } = useDiagnostics();
+
+  const handleReloadConfig = () => {
+    window.location.reload();
+  };
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -108,6 +115,7 @@ export default function AssistantPage() {
     <div className={`min-h-screen flex flex-col bg-dark-950 ${fullscreen ? 'fixed inset-0 z-50' : ''}`}>
       {/* Navbar */}
       <Navbar currentPage="assistant" />
+      <ConfigBanner diagnostics={diagnostics} onReload={handleReloadConfig} onTestApis={testApis} />
 
       <div className="flex flex-1 min-h-0">
         {/* Sidebar - Fixed positioning for all screen sizes */}

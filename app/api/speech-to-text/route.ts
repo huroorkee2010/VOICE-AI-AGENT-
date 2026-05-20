@@ -37,11 +37,16 @@ async function transcribeWithOpenAI(audioBuffer: Buffer, fileName: string): Prom
     formData.append('model', 'whisper-1');
     formData.append('language', 'en');
 
+    const openAIKey =
+      process.env.OPENAI_API_KEY ||
+      process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
+      process.env.NEXT_PUBLIC_OPENAI_KEY;
+
     // Use fetch directly for Whisper endpoint
     const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${openAIKey}`,
       },
       body: formData,
     });
@@ -85,10 +90,12 @@ export async function POST(request: NextRequest) {
 
     let transcript = '';
 
-    const hasDeepgramKey =
-      !!process.env.DEEPGRAM_API_KEY && !process.env.DEEPGRAM_API_KEY.includes('your-real');
-    const hasOpenAIKey =
-      !!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY.includes('your-real');
+    const deepgramKey =
+      process.env.DEEPGRAM_API_KEY || process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
+    const openAIKey =
+      process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_KEY;
+    const hasDeepgramKey = !!deepgramKey && !deepgramKey.includes('your-real');
+    const hasOpenAIKey = !!openAIKey && !openAIKey.includes('your-real');
 
     // Try Deepgram first if key is available
     if (hasDeepgramKey) {
@@ -113,7 +120,7 @@ export async function POST(request: NextRequest) {
           error:
             'No speech-to-text API configured. Please set DEEPGRAM_API_KEY or OPENAI_API_KEY, and avoid placeholder values like your-real-deepgram-api-key.',
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 
@@ -153,7 +160,7 @@ export async function POST(request: NextRequest) {
         error: errorMessage,
         timestamp: Date.now(),
       },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }

@@ -4,8 +4,14 @@ import { CONSTANTS, SYSTEM_PROMPTS } from '@/lib/constants';
 
 const DEBUG_MODE = process.env.NEXT_PUBLIC_DEBUG_MODE === 'true';
 const USE_MOCK_RESPONSES = process.env.DEBUG_MOCK_RESPONSES === 'true';
-const WEBHOOK_URL = process.env.AI_WEBHOOK_URL || process.env.NEXT_PUBLIC_AI_WEBHOOK_URL;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const WEBHOOK_URL =
+  process.env.AI_WEBHOOK_URL ||
+  process.env.NEXT_PUBLIC_AI_WEBHOOK_URL ||
+  process.env.NEXT_PUBLIC_WEBHOOK_URL;
+const OPENAI_API_KEY =
+  process.env.OPENAI_API_KEY ||
+  process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
+  process.env.NEXT_PUBLIC_OPENAI_KEY;
 
 const isValidOpenAIKey = (key?: string) =>
   typeof key === 'string' && key.startsWith('sk-') && !key.includes('your-real');
@@ -178,7 +184,7 @@ export async function POST(request: NextRequest) {
           error:
             'No valid OpenAI API key configured and no fallback webhook available. Set OPENAI_API_KEY or AI_WEBHOOK_URL. If you are using placeholder values, replace them with real credentials.',
         },
-        { status: 400 }
+        { status: 200 }
       );
     }
 
