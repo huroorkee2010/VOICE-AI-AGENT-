@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const WEBHOOK_URL = process.env.AI_WEBHOOK_URL;
+// Use the provided n8n webhook URL or environment variable
+const N8N_WEBHOOK_URL = 'https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI';
+const WEBHOOK_URL = process.env.AI_WEBHOOK_URL || N8N_WEBHOOK_URL;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 interface ChatRequest {
@@ -13,51 +15,88 @@ async function fetchWebhookResponse(message: string, history?: ChatRequest['hist
     throw new Error('Webhook URL is not configured');
   }
 
+  console.log('🔗 Webhook URL:', WEBHOOK_URL);
+  
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30000);
 
-  const response = await fetch(WEBHOOK_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, history }),
-    signal: controller.signal,
-  });
-
-  clearTimeout(timeout);
-
-  const text = await response.text();
-  let payload: any;
-
   try {
-    payload = JSON.parse(text);
-  } catch {
-    payload = text;
+    const requestBody = {
+      message,
+      history: history || [],
+      timestamp: new Date().toISOString(),
+    };
+
+    console.log('📤 Webhook Request:', { url: WEBHOOK_URL, body: requestBody });
+
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'HUVOICE-AI-Client/1.0',
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    const text = await response.text();
+    console.log('📥 Webhook Raw Response:', {
+      status: response.status,
+      statusText: response.statusText,
+      body: text.substring(0, 500),
+    });
+
+    let payload: any;
+
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      payload = { body: text };
+    }
+
+    if (!response.ok) {
+      const errorMessage =
+        payload?.error ||
+        payload?.message ||
+        payload?.body ||
+        `Webhook returned ${response.status}: ${response.statusText}`;
+      throw new Error(`Webhook error: ${errorMessage}`);
+    }
+
+    // Parse n8n response - try multiple common formats
+    const aiMessage =
+      payload?.response ||
+      payload?.message ||
+      payload?.text ||
+      payload?.reply ||
+      payload?.output ||
+      payload?.answer ||
+      payload?.result ||
+      payload?.content ||
+      payload?.body?.message ||
+      payload?.body?.response ||
+      payload?.body?.text ||
+      payload?.data?.message ||
+      payload?.data?.text ||
+      payload?.data?.response ||
+      payload?.body ||
+      (typeof payload === 'string' ? payload : '');
+
+    if (!aiMessage) {
+      console.warn('⚠️ No message found in webhook response:', payload);
+      throw new Error('No response message in webhook payload');
+    }
+
+    return String(aiMessage).trim();
+  } catch (error) {
+    clearTimeout(timeout);
+    if (error instanceof Error) {
+      console.error('❌ Webhook fetch error:', error.message);
+    }
+    throw error;
   }
-
-  if (!response.ok) {
-    const errorMessage =
-      payload?.error || payload?.message || payload?.text || `Webhook returned ${response.status}`;
-    throw new Error(errorMessage);
-  }
-
-  const aiMessage =
-    payload?.message ||
-    payload?.text ||
-    payload?.reply ||
-    payload?.response ||
-    payload?.output ||
-    payload?.answer ||
-    payload?.result ||
-    payload?.content ||
-    payload?.data?.message ||
-    payload?.data?.text ||
-    payload?.data?.output ||
-    payload?.body?.message ||
-    payload?.body?.text ||
-    payload?.body ||
-    (typeof payload === 'string' ? payload : '');
-
-  return String(aiMessage || '').trim();
 }
 
 async function fetchOpenAIResponse(message: string, history?: ChatRequest['history']) {
@@ -72,6 +111,8 @@ async function fetchOpenAIResponse(message: string, history?: ChatRequest['histo
     })),
     { role: 'user' as const, content: message },
   ];
+
+  console.log('🤖 OpenAI Request:', { model: 'gpt-4o', messagesCount: messages.length });
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -89,9 +130,12 @@ async function fetchOpenAIResponse(message: string, history?: ChatRequest['histo
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(
-      error?.error?.message || `OpenAI API returned ${response.status}: ${response.statusText}`
-    );
+    const errorMessage =
+      error?.error?.message ||
+      error?.message ||
+      `OpenAI API returned ${response.status}: ${response.statusText}`;
+    console.error('❌ OpenAI error:', errorMessage);
+    throw new Error(errorMessage);
   }
 
   const data = await response.json();
@@ -101,6 +145,7 @@ async function fetchOpenAIResponse(message: string, history?: ChatRequest['histo
     throw new Error('Invalid response from OpenAI API');
   }
 
+  console.log('✅ OpenAI response received');
   return aiMessage.trim();
 }
 
@@ -111,7 +156,13 @@ export async function POST(request: NextRequest) {
     const body: ChatRequest = await request.json();
     const { message, history } = body;
 
-    console.log('📨 Chat request received:', { message, historyLength: history?.length || 0 });
+    console.log('\n' + '='.repeat(60));
+    console.log('📨 Chat request received');
+    console.log('Message:', message.substring(0, 100));
+    console.log('History length:', history?.length || 0);
+    console.log('Webhook URL:', WEBHOOK_URL ? '✅ Configured' : '❌ Not configured');
+    console.log('OpenAI Key:', OPENAI_API_KEY ? '✅ Configured' : '❌ Not configured');
+    console.log('='.repeat(60));
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -123,37 +174,48 @@ export async function POST(request: NextRequest) {
     let aiMessage: string | null = null;
     let usedService = 'unknown';
 
-    // Try webhook first (if configured)
+    // Try n8n webhook first (primary service)
     if (WEBHOOK_URL) {
       try {
-        console.log('🔗 Attempting webhook request...');
+        console.log('\n🔗 Step 1: Trying n8n webhook...');
         aiMessage = await fetchWebhookResponse(message, history);
-        usedService = 'webhook';
-        console.log('✅ Webhook response successful');
+        usedService = 'n8n-webhook';
+        console.log('✅ n8n webhook SUCCESS');
       } catch (webhookError) {
-        console.warn('⚠️ Webhook failed, falling back to OpenAI:', webhookError);
-        // Continue to OpenAI fallback
+        const errorMsg = webhookError instanceof Error ? webhookError.message : String(webhookError);
+        console.log(`⚠️ n8n webhook FAILED: ${errorMsg}`);
+        console.log('💨 Attempting fallback to OpenAI...\n');
+      }
+    } else {
+      console.log('⏭️ Webhook not configured, skipping to OpenAI');
+    }
+
+    // Fallback to OpenAI if webhook not available or failed
+    if (!aiMessage && OPENAI_API_KEY) {
+      try {
+        console.log('🤖 Step 2: Trying OpenAI API...');
+        aiMessage = await fetchOpenAIResponse(message, history);
+        usedService = 'openai';
+        console.log('✅ OpenAI SUCCESS');
+      } catch (openaiError) {
+        const errorMsg = openaiError instanceof Error ? openaiError.message : String(openaiError);
+        console.error(`❌ OpenAI FAILED: ${errorMsg}`);
+        throw openaiError;
       }
     }
 
-    // Fallback to OpenAI if webhook failed or not configured
     if (!aiMessage) {
-      if (!OPENAI_API_KEY) {
-        throw new Error(
-          'No AI service available. Please configure OPENAI_API_KEY or AI_WEBHOOK_URL in environment variables.'
-        );
-      }
-      console.log('🤖 Attempting OpenAI request...');
-      aiMessage = await fetchOpenAIResponse(message, history);
-      usedService = 'openai';
-      console.log('✅ OpenAI response successful');
+      throw new Error(
+        'No AI service available. Please ensure either n8n webhook or OPENAI_API_KEY is configured.'
+      );
     }
 
-    if (!aiMessage) {
-      throw new Error('Invalid response received from AI service');
-    }
-
-    console.log('✅ Chat response:', { aiMessage: aiMessage.substring(0, 120), usedService });
+    console.log('\n✅ Chat response:', {
+      service: usedService,
+      messageLength: aiMessage.length,
+      preview: aiMessage.substring(0, 100),
+    });
+    console.log('='.repeat(60) + '\n');
 
     return NextResponse.json(
       {
@@ -167,21 +229,25 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('❌ Chat route error:', error);
+    console.error('\n' + '❌'.repeat(30));
+    console.error('Chat route error:', error);
+    console.error('❌'.repeat(30) + '\n');
 
     const isBadRequest =
       error instanceof Error && error.message === 'Invalid message format';
 
-    const message = isBadRequest
+    const errorMessage = isBadRequest
       ? error instanceof Error
         ? error.message
         : 'Invalid request'
-      : 'AI service is currently unavailable. Please ensure OPENAI_API_KEY is configured in Vercel environment variables.';
+      : error instanceof Error
+      ? error.message
+      : 'AI service is currently unavailable';
 
     return NextResponse.json(
       {
         success: false,
-        error: message,
+        error: errorMessage,
         timestamp: Date.now(),
       },
       { status: isBadRequest ? 400 : 503 }
