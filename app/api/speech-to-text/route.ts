@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
           error:
             'No speech-to-text API configured. Please set DEEPGRAM_API_KEY or OPENAI_API_KEY, and avoid placeholder values like your-real-deepgram-api-key.',
         },
-        { status: 200 }
+        { status: 400 }
       );
     }
 
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
         error: errorMessage,
         timestamp: Date.now(),
       },
-      { status: 200 }
+      { status: 500 }
     );
   }
 }

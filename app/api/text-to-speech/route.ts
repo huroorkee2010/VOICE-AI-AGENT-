@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
           error:
             'ElevenLabs API key not configured or invalid. Please set ELEVENLABS_API_KEY with a real key.',
         },
-        { status: 200 }
+        { status: 400 }
       );
     }
 
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         { success: false, error: errorMessage },
-        { status: 200 }
+        { status: elevenlabsResponse.status }
       );
     }
 

@@ -54,10 +54,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage }) => {
               )}
             >
               <div className="flex flex-col px-3 py-3 gap-2">
-                <NavLink href="/" label="Home" icon={<Home className="w-4 h-4" />} active={currentPage === 'home'} />
-                <NavLink href="/assistant" label="Assistant" icon={<MessageSquare className="w-4 h-4" />} active={currentPage === 'assistant'} />
-                <NavLink href="/history" label="History" icon={<MessageSquare className="w-4 h-4" />} active={currentPage === 'history'} />
-                <NavLink href="/settings" label="Settings" icon={<Settings className="w-4 h-4" />} active={currentPage === 'settings'} />
+                <NavLink href="/" label="Home" icon={<Home className="w-4 h-4" />} active={currentPage === 'home'} onClick={() => setMobileOpen(false)} />
+                <NavLink href="/assistant" label="Assistant" icon={<MessageSquare className="w-4 h-4" />} active={currentPage === 'assistant'} onClick={() => setMobileOpen(false)} />
+                <NavLink href="/history" label="History" icon={<MessageSquare className="w-4 h-4" />} active={currentPage === 'history'} onClick={() => setMobileOpen(false)} />
+                <NavLink href="/settings" label="Settings" icon={<Settings className="w-4 h-4" />} active={currentPage === 'settings'} onClick={() => setMobileOpen(false)} />
               </div>
             </div>
           </div>
@@ -72,12 +72,14 @@ interface NavLinkProps {
   label: string;
   icon?: React.ReactNode;
   active?: boolean;
+  onClick?: () => void;
 }
 
-const NavLink: React.FC<NavLinkProps> = ({ href, label, icon, active }) => {
+const NavLink: React.FC<NavLinkProps> = ({ href, label, icon, active, onClick }) => {
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={classNames(
         'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200',
         active

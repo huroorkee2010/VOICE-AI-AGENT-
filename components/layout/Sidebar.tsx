@@ -38,7 +38,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={onCreateNew}
+            onClick={() => {
+              onCreateNew();
+              onClose?.();
+            }}
             className="p-2 h-auto w-auto"
             title="New conversation"
           >
@@ -65,7 +68,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Button
               variant="primary"
               size="sm"
-              onClick={onCreateNew}
+              onClick={() => {
+                onCreateNew();
+                onClose?.();
+              }}
               className="mt-4 w-full"
             >
               Start One
@@ -81,7 +87,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ? 'bg-brand-500/20 border border-brand-500/30'
                   : 'hover:bg-dark-700 border border-dark-700'
               )}
-              onClick={() => onSelectConversation(conversation)}
+              onClick={() => {
+                onSelectConversation(conversation);
+                onClose?.();
+              }}
             >
               <div className="flex items-start gap-2">
                 <MessageSquare className="w-4 h-4 text-brand-400 flex-shrink-0 mt-1" />

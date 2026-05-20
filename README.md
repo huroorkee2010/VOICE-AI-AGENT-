@@ -147,7 +147,8 @@ ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
 DEEPGRAM_API_KEY=...
 
 # App Settings
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000/api
+NEXT_PUBLIC_API_BASE_URL=/api
+AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/jarvis-ai
 NEXT_PUBLIC_DEBUG_MODE=false
 ```
 
