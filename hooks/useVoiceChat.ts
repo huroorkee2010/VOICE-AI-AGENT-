@@ -16,6 +16,7 @@ export const useVoiceChat = () => {
   const store = useConversationStore();
   const audioRecorder = useAudioRecorder();
   const recognitionRef = useRef<any>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const transcriptProcessedRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,27 +32,48 @@ export const useVoiceChat = () => {
     async (text: string) => {
       if (typeof window === 'undefined') return;
 
-      const useElevenLabs = process.env.NEXT_PUBLIC_USE_ELEVENLABS === 'true';
+      const useElevenLabs = process.env.NEXT_PUBLIC_USE_ELEVENLABS !== 'false';
       const voiceId = store.userPreferences.voiceSettings.voiceId;
       const language = store.userPreferences.voiceSettings.language || 'en-US';
 
+      const stopPlayback = () => {
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current.src = '';
+          audioElementRef.current = null;
+        }
+      };
+
       const playAudioBlob = async (blob: Blob) => {
+        stopPlayback();
         const url = URL.createObjectURL(blob);
+
         return new Promise<void>((resolve) => {
           const audio = new Audio(url);
+          audioElementRef.current = audio;
 
           audio.onended = () => {
             URL.revokeObjectURL(url);
+            if (audioElementRef.current === audio) {
+              audioElementRef.current = null;
+            }
             resolve();
           };
 
           audio.onerror = () => {
             URL.revokeObjectURL(url);
+            if (audioElementRef.current === audio) {
+              audioElementRef.current = null;
+            }
             resolve();
           };
 
-          audio.play().catch(() => {
+          audio.play().catch((error) => {
+            console.error('Audio playback failed:', error);
             URL.revokeObjectURL(url);
+            if (audioElementRef.current === audio) {
+              audioElementRef.current = null;
+            }
             resolve();
           });
         });
@@ -99,10 +121,12 @@ export const useVoiceChat = () => {
       };
 
       const stopSpeaking = () => {
+        stopPlayback();
         store.setSpeaking(false);
       };
 
       try {
+        stopPlayback();
         store.setSpeaking(true);
 
         if (useElevenLabs) {
@@ -376,9 +400,14 @@ export const useVoiceChat = () => {
 
   const interruptAI = useCallback(() => {
     console.log('🛑 Interrupting AI response');
-    // Stop speech synthesis immediately
+    // Stop any active playback or browser speech
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
+    }
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.src = '';
+      audioElementRef.current = null;
     }
     // Abort any pending chat request
     if (abortControllerRef.current) {
@@ -403,6 +432,14 @@ export const useVoiceChat = () => {
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.abort();
+      }
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current.src = '';
+        audioElementRef.current = null;
       }
       audioRecorder.cleanup();
     };

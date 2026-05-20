@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
 export const runtime = 'nodejs';
 
@@ -9,35 +10,46 @@ interface TTSRequest {
   similarityBoost?: number;
 }
 
+function formatAudioData(data: unknown): Promise<ArrayBuffer> {
+  if (data instanceof ArrayBuffer) {
+    return Promise.resolve(data);
+  }
+
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(data)) {
+    return Promise.resolve(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer);
+  }
+
+  if (typeof Blob !== 'undefined' && data instanceof Blob) {
+    return data.arrayBuffer();
+  }
+
+  if (typeof (data as any)?.arrayBuffer === 'function') {
+    return (data as any).arrayBuffer();
+  }
+
+  return new Response(data as any).arrayBuffer();
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const elevenLabsKey =
-      process.env.ELEVENLABS_API_KEY ||
-      process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY ||
-      process.env.NEXT_PUBLIC_ELEVENLABS_KEY;
-    const hasValidElevenLabsKey = !!elevenLabsKey && !elevenLabsKey.includes('your-real');
-
-    // Validate API key
-    if (!hasValidElevenLabsKey) {
+    const elevenLabsKey = process.env.ELEVENLABS_API_KEY;
+    if (!elevenLabsKey) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            'ElevenLabs API key not configured or invalid. Please set ELEVENLABS_API_KEY with a real key.',
+          error: 'ElevenLabs API key not configured. Set ELEVENLABS_API_KEY in your environment.',
         },
         { status: 400 }
       );
     }
 
     const body: TTSRequest = await request.json();
-    const {
-      text,
-      voiceId = '21m00Tcm4TlvDq8ikWAM', // Default to Bella voice
-      stability = 0.5,
-      similarityBoost = 0.75,
-    } = body;
+    const text = typeof body.text === 'string' ? body.text.trim() : '';
+    const voiceId = (body.voiceId || process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM').trim();
+    const stability = typeof body.stability === 'number' ? body.stability : 0.5;
+    const similarityBoost = typeof body.similarityBoost === 'number' ? body.similarityBoost : 0.75;
 
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+    if (!text) {
       return NextResponse.json(
         { success: false, error: 'No text provided for speech synthesis' },
         { status: 400 }
@@ -51,56 +63,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use ElevenLabs API directly via fetch
-    const elevenlabsResponse = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: 'POST',
-        headers: {
-          'xi-api-key': elevenLabsKey as string,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: text.trim(),
-          model_id: 'eleven_monolingual_v1',
-          voice_settings: {
-            stability,
-            similarity_boost: similarityBoost,
-          },
-        }),
-      }
-    );
+    const client = new ElevenLabsClient({ apiKey: elevenLabsKey });
+    const response = await client.textToSpeech.convert(voiceId, {
+      text,
+      modelId: 'eleven_monolingual_v1',
+      voiceSettings: {
+        stability,
+        similarityBoost,
+      },
+    });
 
-    if (!elevenlabsResponse.ok) {
-      const errorData = await elevenlabsResponse.text();
-      console.error('ElevenLabs error:', elevenlabsResponse.status, errorData);
+    const audioBuffer = await formatAudioData(response);
 
-      let errorMessage = 'Failed to generate speech';
-      if (elevenlabsResponse.status === 401) {
-        errorMessage = 'Invalid ElevenLabs API key';
-      } else if (elevenlabsResponse.status === 429) {
-        errorMessage = 'Rate limit exceeded. Please try again later.';
-      } else if (elevenlabsResponse.status === 400) {
-        errorMessage = 'Invalid request. Please check your input.';
-      }
-
-      return NextResponse.json(
-        { success: false, error: errorMessage },
-        { status: elevenlabsResponse.status }
-      );
-    }
-
-    // Get audio buffer
-    const audioBuffer = await elevenlabsResponse.arrayBuffer();
-
-    // Return audio as binary
     return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Content-Disposition': 'inline; filename="speech.mp3"',
         'Cache-Control': 'no-cache',
-        'Access-Control-Allow-Origin': '*',
       },
     });
   } catch (error) {
@@ -108,9 +87,14 @@ export async function POST(request: NextRequest) {
 
     let errorMessage = 'Failed to generate speech';
     if (error instanceof Error) {
-      errorMessage = error.message;
-      if (error.message.includes('fetch')) {
+      if (error.message.includes('401')) {
+        errorMessage = 'Invalid ElevenLabs API key';
+      } else if (error.message.includes('429')) {
+        errorMessage = 'Rate limit exceeded. Please try again later.';
+      } else if (error.message.includes('fetch')) {
         errorMessage = 'Network error. Please check your connection.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
     }
 

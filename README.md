@@ -13,9 +13,102 @@ A modern, production-ready real-time HUVOICE AI voice agent built with **Next.js
 - 🎨 **Modern UI** - Beautiful glassmorphism design with Framer Motion animations
 - 🔐 **Secure** - Environment variable-based API key management
 - 📊 **Scalable Architecture** - Production-ready code structure
-- 🌙 **Dark Mode** - Eye-friendly dark theme interface
+## 📊 API Integration Details
 
-## 🛠️ Tech Stack
+### OpenAI Integration
+
+**Endpoint:** `/api/chat`
+
+```typescript
+// Request
+POST /api/chat
+Content-Type: application/json
+
+{
+  "message": "What time is it?",
+  "history": [
+    { "role": "user", "content": "Hello" },
+    { "role": "assistant", "content": "Hi there!" }
+  ]
+}
+
+// Response
+{
+  "success": true,
+  "data": {
+    "message": "It's currently 3:45 PM EDT."
+  }
+}
+```
+
+**Uses:** `process.env.OPENAI_API_KEY` (server-side only)
+
+### ElevenLabs Integration (Server-Side)
+
+**Endpoint:** `/api/text-to-speech`
+
+```typescript
+// Request from browser (NO API KEY SENT)
+POST /api/text-to-speech
+Content-Type: application/json
+
+{
+  "text": "Hello, this is a test.",
+  "voiceId": "21m00Tcm4TlvDq8ikWAM",
+  "stability": 0.5,
+  "similarityBoost": 0.75
+}
+
+// Response: Audio MP3 blob
+Content-Type: audio/mpeg
+[Binary MP3 data]
+```
+
+**Security:** Server uses `process.env.ELEVENLABS_API_KEY` internally
+
+### Deepgram Integration (Optional)
+
+**Endpoint:** `/api/speech-to-text`
+
+```typescript
+// Request
+POST /api/speech-to-text
+Content-Type: multipart/form-data
+
+audio: [Audio blob from Web Audio API]
+
+// Response
+{
+  "success": true,
+  "data": {
+    "text": "What time is it?"
+  }
+}
+```
+
+**Uses:** `process.env.DEEPGRAM_API_KEY` (server-side) OR browser Web Speech API (fallback)
+
+### n8n Webhook Integration (Optional)
+
+**Endpoint:** `AI_WEBHOOK_URL`
+
+```typescript
+// Server forwards requests to your n8n workflow
+POST https://your-domain.app.n8n.cloud/webhook/workflow
+Content-Type: application/json
+
+{
+  "message": "What are business hours?",
+  "history": [...]
+}
+
+// n8n returns:
+{
+  "message": "We're open 9 AM - 5 PM EST."
+}
+```
+
+**Benefit:** Add custom logic, database lookups, external APIs, etc.
 
 - **Frontend**: Next.js 14, React 18, TypeScript
 - **Styling**: Tailwind CSS, Framer Motion
@@ -202,47 +295,290 @@ Customize voice parameters in `/settings`:
 - Configure auto-play options
 - View API configuration
 
+## 🏗️ Architecture
+
+### Voice AI Flow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  HUVOICE AI Flow                        │
+└─────────────────────────────────────────────────────────┘
+
+1. USER SPEAKS
+   └─> Browser Records Audio (Web Audio API)
+   
+2. SPEECH-TO-TEXT
+   ├─> Deepgram API (if configured)
+   └─> Browser Web Speech API (fallback)
+       └─> Returns: User's Text Transcription
+   
+3. AI PROCESSING
+   ├─> Send to n8n Webhook (if configured)
+   │   └─> Custom business logic
+   └─> Direct OpenAI API (fallback)
+       └─> Sends: User message + conversation history
+       └─> Returns: AI response text
+   
+4. TEXT-TO-SPEECH (Server-Side)
+   ├─> Client sends: { text: "...", voiceId: "...\" }
+   ├─> Server receives ELEVENLABS_API_KEY
+   ├─> Server calls: ElevenLabs API (secure)
+   └─> Server returns: MP3 audio blob
+   
+5. PLAYBACK
+   └─> Browser plays audio to user
+   └─> Updates conversation UI
+
+┌─────────────────────────────────────────────────────────┐
+│ KEY: Server-side proxying ensures API keys stay secure │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Component Architecture
+
+```
+FRONTEND (Browser)
+├── useVoiceChat Hook
+│   ├── Audio Recording (Web Audio API)
+│   ├── Speech Recognition (Web Speech API / Deepgram)
+│   ├── Chat Requests (OpenAI / n8n)
+│   └── TTS Requests (via /api/text-to-speech)
+│
+├── UI Components
+│   ├── MicrophoneButton (recording control)
+│   ├── WaveformAnimation (visual feedback)
+│   ├── ConversationHistory (message display)
+│   └── AIIndicator (thinking state)
+│
+└── State Management (Zustand)
+    └── conversation.ts (messages, audio state)
+
+BACKEND (Next.js API Routes)
+├── /api/speech-to-text
+│   └── Optional: Deepgram transcription
+│
+├── /api/chat
+│   ├── Routes to: OpenAI API or n8n webhook
+│   └── Returns: AI response text
+│
+├── /api/text-to-speech
+│   ├── Receives: text + voiceId
+│   ├── Uses: ELEVENLABS_API_KEY (server-only)
+│   ├── Calls: ElevenLabs API
+│   └── Returns: MP3 audio blob
+│
+└── /api/realtime
+    └── Reserved for future WebSocket features
+```
+
+## 🔐 Security Architecture
+
+### API Key Management
+
+**CRITICAL: Never expose API keys to the browser!**
+
+```
+✅ SAFE - Server-Side Only
+├── OPENAI_API_KEY
+├── ELEVENLABS_API_KEY
+└── DEEPGRAM_API_KEY (if not using Web Speech)
+
+⚠️ FRONTEND (NEXT_PUBLIC_* are exposed)
+├── NEXT_PUBLIC_API_BASE_URL
+├── NEXT_PUBLIC_USE_ELEVENLABS
+├── NEXT_PUBLIC_USE_DEEPGRAM
+└── NEXT_PUBLIC_DEBUG_MODE
+```
+
+### Request Flow Security
+
+**Text-to-Speech Example:**
+
+```
+1. Browser (safe)
+   └─> POST /api/text-to-speech { text: "...", voiceId: "..." }
+       └─> Does NOT include: ELEVENLABS_API_KEY
+
+2. Server (secure)
+   ├─> Reads: process.env.ELEVENLABS_API_KEY from server memory
+   ├─> Calls: ElevenLabs API with key
+   └─> Returns: Audio MP3 to browser
+       └─> Does NOT leak: API key to browser
+
+3. Browser receives: Safe MP3 audio file
+   └─> Plays: Audio to user
+```
+
 ## 🚀 Deployment
 
-### Deploy to Vercel
+### Deploy to Vercel (Recommended)
 
-1. **Push to GitHub**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git branch -M main
-   git remote add origin <your-repo>
-   git push -u origin main
-   ```
+**Step 1: Push to GitHub**
 
-2. **Connect to Vercel**
-   - Go to https://vercel.com
-   - Import your repository
-   - Add environment variables in project settings
+```bash
+git init
+git add .
+git commit -m "Initial commit: HUVOICE AI"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/huvoice-ai.git
+git push -u origin main
+```
 
-3. **Deploy**
-   - Vercel auto-deploys on push
-   - Your app is live!
+**Step 2: Connect to Vercel**
+
+1. Go to [vercel.com](https://vercel.com)
+2. Click "New Project"
+3. Select your GitHub repository
+4. Click "Import"
+
+**Step 3: Add Environment Variables**
+
+1. In Vercel project settings, click "Environment Variables"
+2. Add each variable from `.env.local`:
+   - `OPENAI_API_KEY` = your OpenAI key
+   - `ELEVENLABS_API_KEY` = your ElevenLabs key
+   - `ELEVENLABS_VOICE_ID` = 21m00Tcm4TlvDq8ikWAM
+   - `DEEPGRAM_API_KEY` = your Deepgram key (optional)
+   - `AI_WEBHOOK_URL` = your n8n webhook (optional)
+
+3. Leave `NEXT_PUBLIC_API_BASE_URL=/api` (for Vercel)
+
+**Step 4: Deploy**
+
+```bash
+# Vercel auto-deploys on git push
+git add .
+git commit -m "Update configuration"
+git push
+
+# Check deployment status at: https://vercel.com/dashboard
+```
+
+**Step 5: Verify Deployment**
+
+1. Visit your Vercel URL (e.g., `https://huvoice-ai.vercel.app`)
+2. Go to **Settings** tab
+3. Check API keys are configured
+4. Test: Click microphone button and try recording
+
+### Local Development Setup
+
+**Step 1: Install Dependencies**
+
+```bash
+cd "AI voice AGENT"
+npm install
+```
+
+**Step 2: Create `.env.local`**
+
+```bash
+cp .env.example .env.local
+```
+
+**Step 3: Add Your API Keys**
+
+Edit `.env.local` and add:
+- OpenAI API key from https://platform.openai.com/api-keys
+- ElevenLabs API key from https://elevenlabs.io
+- Deepgram key (optional) from https://console.deepgram.com
+
+**Step 4: Start Dev Server**
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+**Step 5: Test Voice Features**
+
+1. Go to **Assistant** page
+2. Click **Settings** to verify API keys
+3. Click **Microphone** button to record
+4. Speak naturally: "Hello, what's your name?"
+5. Wait for AI response
+6. Hear voice response automatically
 
 ### Deploy with Docker
 
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
 RUN npm ci --only=production
+
+# Copy source code
 COPY . .
+
+# Build app
 RUN npm run build
+
+# Expose port
 EXPOSE 3000
+
+# Start server
 CMD ["npm", "start"]
 ```
 
-Build and run:
+**Build and run:**
+
 ```bash
+# Build image
 docker build -t huvoice-ai .
-docker run -p 3000:3000 -e OPENAI_API_KEY=sk-... huvoice-ai
+
+# Run container with environment variables
+docker run -p 3000:3000 \
+  -e OPENAI_API_KEY="sk-..." \
+  -e ELEVENLABS_API_KEY="..." \
+  -e ELEVENLABS_VOICE_ID="21m00Tcm4TlvDq8ikWAM" \
+  huvoice-ai
+
+# App runs on http://localhost:3000
 ```
+
+### Environment Variables for Production
+
+**Always verify these are set in production:**
+
+```env
+# Required
+OPENAI_API_KEY=sk-...            # AI responses
+ELEVENLABS_API_KEY=...           # Natural voice
+ELEVENLABS_VOICE_ID=21m00...    # Voice selection
+
+# Recommended
+AI_WEBHOOK_URL=https://...       # n8n automation (optional)
+
+# Config
+NEXT_PUBLIC_API_BASE_URL=/api    # Production URL
+NEXT_PUBLIC_USE_ELEVENLABS=true  # Enable TTS
+NEXT_PUBLIC_DEBUG_MODE=false     # No logging
+```
+
+### Troubleshooting Deployment
+
+**Issue: "API key not configured" error**
+- ✅ Verify env vars are added in Vercel/Docker
+- ✅ Redeploy after changing env vars
+- ✅ Check key format (no extra spaces)
+
+**Issue: Audio not playing on mobile**
+- ✅ Enable autoplay: Allow in browser settings
+- ✅ Test in different browser
+- ✅ Check speaker volume
+
+**Issue: Webhook not responding**
+- ✅ Verify n8n webhook URL is correct
+- ✅ Test webhook URL directly: `curl -X POST <URL>`
+- ✅ Fall back to direct OpenAI: remove AI_WEBHOOK_URL
+
+**Issue: Slow responses**
+- ✅ Check OpenAI rate limits
+- ✅ Reduce maxTokens in settings
+- ✅ Use Deepgram for faster transcription
 
 ## 🔌 API Endpoints
 
@@ -348,30 +684,73 @@ This project is open source and available under the MIT License.
 
 ## 🙏 Acknowledgments
 
-- OpenAI for GPT-4o API
-- ElevenLabs for voice synthesis
-- Deepgram for speech recognition
-- Vercel for Next.js
-- Tailwind Labs for Tailwind CSS
+- **OpenAI** for GPT-4o API - Advanced AI responses
+- **ElevenLabs** for voice synthesis - Natural-sounding speech
+- **Deepgram** for speech recognition - High-quality transcription
+- **Vercel** for Next.js hosting - Serverless deployment
+- **Tailwind Labs** for Tailwind CSS - Beautiful styling
+- **Framer** for Motion - Smooth animations
 
-## 📞 Support
+## 📞 Support & Resources
 
-For issues or questions:
-1. Check the troubleshooting section
-2. Review API documentation
-3. Create a GitHub issue
-4. Ask on community forums
+**Documentation:**
+- [OpenAI API Docs](https://platform.openai.com/docs)
+- [ElevenLabs API Docs](https://elevenlabs.io/docs)
+- [Deepgram API Docs](https://developers.deepgram.com)
+- [Next.js Docs](https://nextjs.org/docs)
+- [Vercel Docs](https://vercel.com/docs)
+
+**Troubleshooting:**
+1. Check the troubleshooting section above
+2. Review `.env.example` for missing variables
+3. Check API key validity at their respective dashboards
+4. Test endpoints directly with curl
+5. Create a GitHub issue with error details
+
+## 🎯 Next Steps
+
+1. **Local Development**
+   ```bash
+   npm install
+   cp .env.example .env.local
+   # Add your API keys
+   npm run dev
+   ```
+
+2. **Deploy to Vercel**
+   - Push to GitHub
+   - Import in Vercel
+   - Add environment variables
+   - Your app is live!
+
+3. **Connect to n8n (Optional)**
+   - Create n8n workflow
+   - Add webhook URL to `.env.local`
+   - Restart server
+   - Test with conversation
 
 ## 🎉 Getting Started Checklist
 
 - [ ] Node.js 18+ installed
-- [ ] API keys obtained
-- [ ] `.env.local` created
+- [ ] API keys obtained from platforms
+- [ ] `.env.local` created and populated
 - [ ] Dependencies installed (`npm install`)
 - [ ] Dev server running (`npm run dev`)
 - [ ] Microphone permissions granted
-- [ ] First conversation recorded!
+- [ ] Settings page shows API keys configured
+- [ ] First voice conversation recorded!
+- [ ] Deployed to Vercel (production)
 
 ---
 
-**Ready to talk with your AI?** Start by running `npm run dev` and open [http://localhost:3000](http://localhost:3000)!
+## 🚀 Ready to Talk?
+
+**Local:** `npm run dev` → [http://localhost:3000](http://localhost:3000)
+
+**Production:** Deploy to [Vercel](https://vercel.com) → Your custom domain
+
+**Questions?** Check the [troubleshooting section](#troubleshooting-deployment) or create an issue!
+
+---
+
+**Made with ❤️ for voice AI enthusiasts**

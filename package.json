@@ -12,15 +12,15 @@
   },
   "dependencies": {
     "@deepgram/sdk": "^3.0.0",
+    "@elevenlabs/elevenlabs-js": "^2.49.0",
     "autoprefixer": "^10.4.18",
     "axios": "^1.7.2",
     "classnames": "^2.3.2",
-    "elevenlabs": "^1.59.0",
     "framer-motion": "^10.16.16",
     "lucide-react": "^0.408.0",
     "next": "^16.2.6",
     "openai": "^4.52.7",
-    "postcss": "^8.4.38",
+    "postcss": "^8.5.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
@@ -32,11 +32,14 @@
     "@types/node": "^20.12.12",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
-    "eslint": "^10.4.0",
+    "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.6",
     "stylelint": "^16.2.1",
     "stylelint-config-standard": "^36.0.0",
     "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "postcss": "^8.5.15"
   },
   "engines": {
     "node": ">=18.0.0"
