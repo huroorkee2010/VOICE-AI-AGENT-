@@ -127,7 +127,7 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { message } = body;
+    const { message, history } = body;
 
     console.log('\n' + '='.repeat(60));
     console.log('📨 Chat request received');
@@ -164,7 +164,9 @@ export async function POST(request: NextRequest) {
     } catch (webhookError) {
       const errorMsg = webhookError instanceof Error ? webhookError.message : String(webhookError);
       console.error(`❌ N8N webhook FAILED: ${errorMsg}`);
-      throw webhookError;
+      console.error('Webhook URL being used:', WEBHOOK_URL);
+      console.error('Full error:', webhookError);
+      throw new Error(`N8N webhook failed: ${errorMsg}`);
     }
 
     if (!aiMessage) {

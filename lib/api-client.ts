@@ -97,11 +97,25 @@ class APIClient {
       return response.data.data!;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Chat request failed';
+      const axiosError = error as AxiosError;
+      
       console.error('❌ Chat request error:', {
         error: errorMsg,
-        status: (error as any)?.response?.status,
-        data: (error as any)?.response?.data,
+        status: axiosError?.response?.status,
+        statusText: axiosError?.response?.statusText,
+        responseData: axiosError?.response?.data,
+        message: axiosError?.message,
+        code: axiosError?.code,
       });
+      
+      // Provide more helpful error message
+      if (axiosError?.response?.status === 503) {
+        throw new Error('AI service unavailable. Check webhook URL in .env.local');
+      }
+      if (axiosError?.response?.data && typeof axiosError.response.data === 'object') {
+        const respData = axiosError.response.data as any;
+        throw new Error(respData.error || errorMsg);
+      }
       throw error;
     }
   }
