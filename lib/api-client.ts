@@ -47,28 +47,7 @@ class APIClient {
   }
 
   /**
-   * Send speech to text request
-   */
-  async speechToText(audioBlob: Blob): Promise<{ text: string }> {
-    const formData = new FormData();
-    formData.append('audio', audioBlob);
-
-    const url = `${this.baseURL}${CONSTANTS.API.SPEECH_TO_TEXT}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      body: formData,
-    });
-
-    const data = await response.json();
-    if (!data.success) {
-      throw new Error(data.error || 'Speech to text failed');
-    }
-
-    return data.data;
-  }
-
-  /**
-   * Send chat message
+   * Send chat message (N8N webhook)
    */
   async chat(
     message: string,
@@ -119,35 +98,6 @@ class APIClient {
       throw error;
     }
   }
-
-  /**
-   * Send text to speech request
-   */
-  async textToSpeech(text: string, voiceId?: string): Promise<Blob> {
-    const response = await this.client.post(
-      CONSTANTS.API.TEXT_TO_SPEECH,
-      { text, voiceId },
-      {
-        responseType: 'blob',
-      }
-    );
-
-    const contentTypeHeader = response.headers['content-type'];
-    const contentType =
-      typeof contentTypeHeader === 'string'
-        ? contentTypeHeader
-        : Array.isArray(contentTypeHeader)
-        ? contentTypeHeader.join(', ')
-        : '';
-
-    if (contentType.includes('application/json')) {
-      const textBody = await new Response(response.data).text();
-      try {
-        const json = JSON.parse(textBody);
-        throw new Error(json.error || 'Text to speech failed');
-      } catch {
-        throw new Error(textBody || 'Text to speech failed');
-      }
     }
 
     return response.data;

@@ -32,8 +32,6 @@ export const useVoiceChat = () => {
     async (text: string) => {
       if (typeof window === 'undefined') return;
 
-      const useElevenLabs = process.env.NEXT_PUBLIC_USE_ELEVENLABS !== 'false';
-      const voiceId = store.userPreferences.voiceSettings.voiceId;
       const language = store.userPreferences.voiceSettings.language || 'en-US';
 
       const stopPlayback = () => {
@@ -42,41 +40,6 @@ export const useVoiceChat = () => {
           audioElementRef.current.src = '';
           audioElementRef.current = null;
         }
-      };
-
-      const playAudioBlob = async (blob: Blob) => {
-        stopPlayback();
-        const url = URL.createObjectURL(blob);
-
-        return new Promise<void>((resolve) => {
-          const audio = new Audio(url);
-          audioElementRef.current = audio;
-
-          audio.onended = () => {
-            URL.revokeObjectURL(url);
-            if (audioElementRef.current === audio) {
-              audioElementRef.current = null;
-            }
-            resolve();
-          };
-
-          audio.onerror = () => {
-            URL.revokeObjectURL(url);
-            if (audioElementRef.current === audio) {
-              audioElementRef.current = null;
-            }
-            resolve();
-          };
-
-          audio.play().catch((error) => {
-            console.error('Audio playback failed:', error);
-            URL.revokeObjectURL(url);
-            if (audioElementRef.current === audio) {
-              audioElementRef.current = null;
-            }
-            resolve();
-          });
-        });
       };
 
       const speakWithBrowser = async () => {
@@ -129,22 +92,13 @@ export const useVoiceChat = () => {
         stopPlayback();
         store.setSpeaking(true);
 
-        if (useElevenLabs) {
-          try {
-            const blob = await apiClient.textToSpeech(text, voiceId);
-            await playAudioBlob(blob);
-            return;
-          } catch (error) {
-            console.warn('⚠️ ElevenLabs TTS failed, falling back to browser speech:', error);
-          }
-        }
-
+        // Use browser-native speech synthesis only
         await speakWithBrowser();
       } finally {
         stopSpeaking();
       }
     },
-    [store, apiClient]
+    [store]
   );
 
   const handleAIResponse = useCallback(

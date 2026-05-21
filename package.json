@@ -1,7 +1,7 @@
 {
   "name": "ai-voice-agent",
   "version": "1.0.0",
-  "description": "Production-ready real-time HUVOICE AI voice agent using Next.js, N8N webhook with Gemini, and ElevenLabs",
+  "description": "Production-ready HUVOICE AI voice agent using Next.js, N8N webhook with Gemini, and browser-native speech APIs",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -12,8 +12,6 @@
     "verify": "node scripts/verify-setup.js"
   },
   "dependencies": {
-    "@deepgram/sdk": "^3.0.0",
-    "@elevenlabs/elevenlabs-js": "^2.49.0",
     "autoprefixer": "^10.4.18",
     "axios": "^1.7.2",
     "classnames": "^2.3.2",
