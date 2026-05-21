@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Production n8n webhook URL with environment variable override
-const PRODUCTION_WEBHOOK_URL = 'https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI';
+const PRODUCTION_WEBHOOK_URL = 'https://huassist2010.app.n8n.cloud/webhook/YOUR_PRODUCTION_WEBHOOK_ID';
 const WEBHOOK_URL = process.env.AI_WEBHOOK_URL || PRODUCTION_WEBHOOK_URL;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-console.log('✅ WEBHOOK CONFIGURATION:', {
+console.log('✅ N8N WEBHOOK CONFIGURATION:', {
   production: PRODUCTION_WEBHOOK_URL,
   active: WEBHOOK_URL,
   isCustom: process.env.AI_WEBHOOK_URL ? true : false,
@@ -16,46 +15,46 @@ interface ChatRequest {
   history?: Array<{ role: string; content: string }>;
 }
 
-async function fetchWebhookResponse(message: string, history?: ChatRequest['history']) {
+async function fetchWebhookResponse(message: string) {
   if (!WEBHOOK_URL) {
     throw new Error('Webhook URL is not configured');
   }
 
-  console.log('🔗 Webhook URL:', WEBHOOK_URL);
+  console.log('🔗 N8N Webhook URL:', WEBHOOK_URL);
   
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
   try {
+    // Simple request body as specified - just send message
     const requestBody = {
       message,
-      history: history || [],
-      timestamp: new Date().toISOString(),
     };
 
-    console.log('📤 Webhook Request:', { 
+    console.log('📤 N8N Webhook Request:', { 
       url: WEBHOOK_URL, 
       message: message.substring(0, 100),
-      historyLength: (history || []).length 
     });
 
+    const startTime = Date.now();
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'HUVOICE-AI-Client/1.0',
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
 
+    const duration = Date.now() - startTime;
     clearTimeout(timeout);
 
     const text = await response.text();
-    console.log('📥 Webhook Raw Response:', {
+    console.log('📥 N8N Raw Response:', {
       status: response.status,
       statusText: response.statusText,
       contentLength: text.length,
+      duration: duration + 'ms',
       preview: text.substring(0, 300),
     });
 
@@ -71,44 +70,38 @@ async function fetchWebhookResponse(message: string, history?: ChatRequest['hist
       const errorMessage =
         payload?.error ||
         payload?.message ||
-        payload?.body ||
-        `Webhook returned ${response.status}: ${response.statusText}`;
+        `N8N returned ${response.status}: ${response.statusText}`;
       
-      console.error('❌ Webhook HTTP Error:', {
+      console.error('❌ N8N HTTP Error:', {
         status: response.status,
         error: errorMessage,
       });
       
-      throw new Error(`Webhook error: ${errorMessage}`);
+      throw new Error(`N8N error (${response.status}): ${errorMessage}`);
     }
 
-    // Parse n8n response - try multiple common formats
+    // Parse n8n response - supports multiple Gemini response formats
     const aiMessage =
       payload?.response ||
       payload?.message ||
       payload?.text ||
-      payload?.reply ||
       payload?.output ||
-      payload?.answer ||
       payload?.result ||
       payload?.content ||
-      payload?.body?.message ||
-      payload?.body?.response ||
-      payload?.body?.text ||
       payload?.data?.message ||
       payload?.data?.text ||
-      payload?.data?.response ||
       payload?.body ||
       (typeof payload === 'string' ? payload : '');
 
     if (!aiMessage) {
-      console.warn('⚠️ No message found in webhook response:', JSON.stringify(payload).substring(0, 200));
-      throw new Error('No response message in webhook payload');
+      console.warn('⚠️ No message found in N8N response:', JSON.stringify(payload).substring(0, 200));
+      throw new Error('No response message in N8N webhook payload');
     }
 
     const trimmedMessage = String(aiMessage).trim();
-    console.log('✅ Webhook response parsed successfully:', {
+    console.log('✅ N8N response parsed successfully:', {
       messageLength: trimmedMessage.length,
+      duration: duration + 'ms',
       preview: trimmedMessage.substring(0, 100),
     });
     
@@ -116,63 +109,17 @@ async function fetchWebhookResponse(message: string, history?: ChatRequest['hist
   } catch (error) {
     clearTimeout(timeout);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('❌ Webhook fetch error:', {
+    const isTimeout = errorMessage.includes('timeout') || errorMessage.includes('The user aborted a request');
+    
+    console.error('❌ N8N fetch error:', {
       url: WEBHOOK_URL,
       error: errorMessage,
       type: error instanceof Error ? error.constructor.name : typeof error,
+      isTimeout: isTimeout,
     });
+    
     throw error;
   }
-}
-
-async function fetchOpenAIResponse(message: string, history?: ChatRequest['history']) {
-  if (!OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not configured');
-  }
-
-  const messages = [
-    ...(history || []).map((msg) => ({
-      role: msg.role as 'user' | 'assistant' | 'system',
-      content: msg.content,
-    })),
-    { role: 'user' as const, content: message },
-  ];
-
-  console.log('🤖 OpenAI Request:', { model: 'gpt-4o', messagesCount: messages.length });
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages,
-      temperature: 0.7,
-      max_tokens: 1000,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    const errorMessage =
-      error?.error?.message ||
-      error?.message ||
-      `OpenAI API returned ${response.status}: ${response.statusText}`;
-    console.error('❌ OpenAI error:', errorMessage);
-    throw new Error(errorMessage);
-  }
-
-  const data = await response.json();
-  const aiMessage = data?.choices?.[0]?.message?.content;
-
-  if (!aiMessage) {
-    throw new Error('Invalid response from OpenAI API');
-  }
-
-  console.log('✅ OpenAI response received');
-  return aiMessage.trim();
 }
 
 export const runtime = 'nodejs';
@@ -180,16 +127,15 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { message, history } = body;
+    const { message } = body;
 
     console.log('\n' + '='.repeat(60));
     console.log('📨 Chat request received');
     console.log('Message:', message.substring(0, 100));
-    console.log('History length:', history?.length || 0);
-    console.log('Webhook URL:', WEBHOOK_URL ? '✅ Configured' : '❌ Not configured');
-    console.log('OpenAI Key:', OPENAI_API_KEY ? '✅ Configured' : '❌ Not configured');
+    console.log('N8N Webhook URL:', WEBHOOK_URL ? '✅ Configured' : '❌ Not configured');
     console.log('='.repeat(60));
 
+    // Validate input
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Invalid message format' },
@@ -197,47 +143,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let aiMessage: string | null = null;
-    let usedService = 'unknown';
-
-    // Try n8n webhook first (primary service)
-    if (WEBHOOK_URL) {
-      try {
-        console.log('\n🔗 Step 1: Trying n8n webhook...');
-        aiMessage = await fetchWebhookResponse(message, history);
-        usedService = 'n8n-webhook';
-        console.log('✅ n8n webhook SUCCESS');
-      } catch (webhookError) {
-        const errorMsg = webhookError instanceof Error ? webhookError.message : String(webhookError);
-        console.log(`⚠️ n8n webhook FAILED: ${errorMsg}`);
-        console.log('💨 Attempting fallback to OpenAI...\n');
-      }
-    } else {
-      console.log('⏭️ Webhook not configured, skipping to OpenAI');
-    }
-
-    // Fallback to OpenAI if webhook not available or failed
-    if (!aiMessage && OPENAI_API_KEY) {
-      try {
-        console.log('🤖 Step 2: Trying OpenAI API...');
-        aiMessage = await fetchOpenAIResponse(message, history);
-        usedService = 'openai';
-        console.log('✅ OpenAI SUCCESS');
-      } catch (openaiError) {
-        const errorMsg = openaiError instanceof Error ? openaiError.message : String(openaiError);
-        console.error(`❌ OpenAI FAILED: ${errorMsg}`);
-        throw openaiError;
-      }
-    }
-
-    if (!aiMessage) {
-      throw new Error(
-        'No AI service available. Please ensure either n8n webhook or OPENAI_API_KEY is configured.'
+    // Check if webhook is configured
+    if (!WEBHOOK_URL) {
+      const errorMsg = 'N8N webhook not configured. Please set AI_WEBHOOK_URL in .env.local';
+      console.error('❌ Configuration error:', errorMsg);
+      return NextResponse.json(
+        { success: false, error: errorMsg },
+        { status: 503 }
       );
     }
 
-    console.log('\n✅ Chat response:', {
-      service: usedService,
+    let aiMessage: string | null = null;
+    let usedService = 'n8n-webhook';
+
+    // Call n8n webhook (primary and only service)
+    try {
+      console.log('\n🔗 Calling N8N webhook...');
+      aiMessage = await fetchWebhookResponse(message);
+      console.log('✅ N8N webhook SUCCESS');
+    } catch (webhookError) {
+      const errorMsg = webhookError instanceof Error ? webhookError.message : String(webhookError);
+      console.error(`❌ N8N webhook FAILED: ${errorMsg}`);
+      throw webhookError;
+    }
+
+    if (!aiMessage) {
+      throw new Error('No response from N8N webhook');
+    }
+
+    console.log('\n✅ Chat response from N8N:', {
       messageLength: aiMessage.length,
       preview: aiMessage.substring(0, 100),
     });

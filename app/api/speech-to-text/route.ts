@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-// Try to use Deepgram, fallback to OpenAI Whisper
+// Transcribe using Deepgram API
 async function transcribeWithDeepgram(audioBuffer: Buffer, _mimeType: string): Promise<string> {
   try {
     // Use Deepgram API directly via fetch
@@ -24,41 +24,6 @@ async function transcribeWithDeepgram(audioBuffer: Buffer, _mimeType: string): P
     return transcript;
   } catch (error) {
     console.error('Deepgram error:', error);
-    throw error;
-  }
-}
-
-async function transcribeWithOpenAI(audioBuffer: Buffer, fileName: string): Promise<string> {
-  try {
-    // Create FormData for Whisper API
-    const formData = new FormData();
-    const blob = new Blob([new Uint8Array(audioBuffer)], { type: 'audio/webm' });
-    formData.append('file', blob, fileName);
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'en');
-
-    const openAIKey =
-      process.env.OPENAI_API_KEY ||
-      process.env.NEXT_PUBLIC_OPENAI_API_KEY ||
-      process.env.NEXT_PUBLIC_OPENAI_KEY;
-
-    // Use fetch directly for Whisper endpoint
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${openAIKey}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as { text: string };
-    return data.text || '';
-  } catch (error) {
-    console.error('OpenAI Whisper error:', error);
     throw error;
   }
 }
@@ -90,35 +55,30 @@ export async function POST(request: NextRequest) {
 
     let transcript = '';
 
-    const deepgramKey =
-      process.env.DEEPGRAM_API_KEY || process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
-    const openAIKey =
-      process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_KEY;
+    const deepgramKey = process.env.DEEPGRAM_API_KEY || process.env.NEXT_PUBLIC_DEEPGRAM_API_KEY;
     const hasDeepgramKey = !!deepgramKey && !deepgramKey.includes('your-real');
-    const hasOpenAIKey = !!openAIKey && !openAIKey.includes('your-real');
 
-    // Try Deepgram first if key is available
+    // Use Deepgram if key is available, otherwise inform user to use browser speech API
     if (hasDeepgramKey) {
       try {
+        console.log('🎤 Transcribing with Deepgram...');
         transcript = await transcribeWithDeepgram(audioBuffer, audioBlob.type || 'audio/webm');
+        console.log('✅ Deepgram transcription successful');
       } catch (deepgramError) {
-        console.warn('Deepgram failed, trying OpenAI Whisper:', deepgramError);
-        // Fallback to OpenAI
-        if (hasOpenAIKey) {
-          transcript = await transcribeWithOpenAI(audioBuffer, `audio-${Date.now()}.webm`);
-        } else {
-          throw new Error('No speech-to-text API configured');
-        }
+        console.error('❌ Deepgram transcription failed:', deepgramError);
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Speech-to-text service failed. Please try again or check your Deepgram API key.',
+          },
+          { status: 503 }
+        );
       }
-    } else if (hasOpenAIKey) {
-      // Use OpenAI if Deepgram not available
-      transcript = await transcribeWithOpenAI(audioBuffer, `audio-${Date.now()}.webm`);
     } else {
       return NextResponse.json(
         {
           success: false,
-          error:
-            'No speech-to-text API configured. Please set DEEPGRAM_API_KEY or OPENAI_API_KEY, and avoid placeholder values like your-real-deepgram-api-key.',
+          error: 'Deepgram API key not configured. Please set DEEPGRAM_API_KEY in .env.local. Alternatively, browser speech recognition is available for testing.',
         },
         { status: 400 }
       );
@@ -146,7 +106,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error) {
       errorMessage = error.message;
       if (error.message.includes('invalid_api_key')) {
-        errorMessage = 'Invalid API key for speech-to-text service';
+        errorMessage = 'Invalid Deepgram API key';
       } else if (error.message.includes('rate_limit')) {
         errorMessage = 'Rate limit exceeded. Please try again later.';
       } else if (error.message.includes('audio')) {
