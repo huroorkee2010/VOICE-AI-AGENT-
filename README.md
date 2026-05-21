@@ -241,7 +241,7 @@ DEEPGRAM_API_KEY=...
 
 # App Settings
 NEXT_PUBLIC_API_BASE_URL=/api
-AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/jarvis-ai
+AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
 NEXT_PUBLIC_DEBUG_MODE=false
 ```
 

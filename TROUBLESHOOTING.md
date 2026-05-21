@@ -314,7 +314,7 @@ Wait for build to complete
 
 **Step 1: Check n8n Webhook Status**
 ```
-Try: https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+Try: your-n8n-webhook-url-here
 Should get response or auth error (not 502)
 ```
 

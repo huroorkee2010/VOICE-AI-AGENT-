@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Use the provided n8n webhook URL or environment variable
-const N8N_WEBHOOK_URL = 'https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI';
-const WEBHOOK_URL = process.env.AI_WEBHOOK_URL || N8N_WEBHOOK_URL;
+// Production n8n webhook URL with environment variable override
+const PRODUCTION_WEBHOOK_URL = 'https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI';
+const WEBHOOK_URL = process.env.AI_WEBHOOK_URL || PRODUCTION_WEBHOOK_URL;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
+console.log('✅ WEBHOOK CONFIGURATION:', {
+  production: PRODUCTION_WEBHOOK_URL,
+  active: WEBHOOK_URL,
+  isCustom: process.env.AI_WEBHOOK_URL ? true : false,
+});
 
 interface ChatRequest {
   message: string;
@@ -27,7 +33,11 @@ async function fetchWebhookResponse(message: string, history?: ChatRequest['hist
       timestamp: new Date().toISOString(),
     };
 
-    console.log('📤 Webhook Request:', { url: WEBHOOK_URL, body: requestBody });
+    console.log('📤 Webhook Request:', { 
+      url: WEBHOOK_URL, 
+      message: message.substring(0, 100),
+      historyLength: (history || []).length 
+    });
 
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
@@ -45,7 +55,8 @@ async function fetchWebhookResponse(message: string, history?: ChatRequest['hist
     console.log('📥 Webhook Raw Response:', {
       status: response.status,
       statusText: response.statusText,
-      body: text.substring(0, 500),
+      contentLength: text.length,
+      preview: text.substring(0, 300),
     });
 
     let payload: any;
@@ -62,6 +73,12 @@ async function fetchWebhookResponse(message: string, history?: ChatRequest['hist
         payload?.message ||
         payload?.body ||
         `Webhook returned ${response.status}: ${response.statusText}`;
+      
+      console.error('❌ Webhook HTTP Error:', {
+        status: response.status,
+        error: errorMessage,
+      });
+      
       throw new Error(`Webhook error: ${errorMessage}`);
     }
 
@@ -85,16 +102,25 @@ async function fetchWebhookResponse(message: string, history?: ChatRequest['hist
       (typeof payload === 'string' ? payload : '');
 
     if (!aiMessage) {
-      console.warn('⚠️ No message found in webhook response:', payload);
+      console.warn('⚠️ No message found in webhook response:', JSON.stringify(payload).substring(0, 200));
       throw new Error('No response message in webhook payload');
     }
 
-    return String(aiMessage).trim();
+    const trimmedMessage = String(aiMessage).trim();
+    console.log('✅ Webhook response parsed successfully:', {
+      messageLength: trimmedMessage.length,
+      preview: trimmedMessage.substring(0, 100),
+    });
+    
+    return trimmedMessage;
   } catch (error) {
     clearTimeout(timeout);
-    if (error instanceof Error) {
-      console.error('❌ Webhook fetch error:', error.message);
-    }
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('❌ Webhook fetch error:', {
+      url: WEBHOOK_URL,
+      error: errorMessage,
+      type: error instanceof Error ? error.constructor.name : typeof error,
+    });
     throw error;
   }
 }

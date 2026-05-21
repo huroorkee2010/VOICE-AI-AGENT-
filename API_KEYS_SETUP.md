@@ -238,7 +238,7 @@ Environments: Production, Preview, Development
 #### Variable 4: n8n Webhook URL
 ```
 Name: AI_WEBHOOK_URL
-Value: https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+Value: your-n8n-webhook-url-here
 Environments: Production, Preview, Development
 ```
 

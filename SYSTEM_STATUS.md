@@ -179,7 +179,7 @@ DEBUG_MOCK_RESPONSES=false
 ```
 **Use when:** n8n workflow is configured and returning data
 **Response time:** ~1-2 seconds (depends on n8n)
-**Webhook:** `https://huassist2010.app.n8n.cloud/webhook/huvoice-ai`
+**Webhook:** `your-n8n-webhook-url-here`
 **Note:** Webhook must be returning data in proper format (see WEBHOOK_DEBUGGING.md)
 
 ## 📊 SERVER LOGS ANALYSIS
@@ -194,7 +194,7 @@ POST /api/chat 200 in 17ms
 ### Failed Real Webhook (1210ms)
 ```
 📨 Chat request received: { message: 'Hello, how are you?', historyLength: 0 }
-🔗 Forwarding to webhook: https://huassist2010.app.n8n.cloud/webhook/huvoice-ai
+🔗 Forwarding to webhook: your-n8n-webhook-url-here
 📦 Webhook response status: 200
 📦 Webhook response length: 0
 ⚠️ Webhook returned empty response (200 OK but no body)

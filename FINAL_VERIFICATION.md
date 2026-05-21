@@ -140,7 +140,7 @@
 OPENAI_API_KEY=your-real-key
 ELEVENLABS_API_KEY=your-real-key
 ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
-AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+AI_WEBHOOK_URL=your-n8n-webhook-url-here
 ```
 
 ### Local Development ✅
@@ -184,7 +184,7 @@ AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
 - [x] Framer Motion animations
 
 ### Integrations ✅
-- [x] n8n webhook (https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI)
+- [x] n8n webhook (your-n8n-webhook-url-here)
 - [x] OpenAI API fallback (gpt-4o model)
 - [x] ElevenLabs TTS (server-side)
 - [x] Deepgram STT (optional)
@@ -238,7 +238,7 @@ AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
 - **NEXT_PUBLIC_USE_OPENAI_REALTIME**: `true` (ready for future)
 
 ### API Configuration
-- **AI_WEBHOOK_URL**: https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+- **AI_WEBHOOK_URL**: your-n8n-webhook-url-here
 - **Fallback**: OpenAI gpt-4o when webhook fails
 - **Timeout**: 30 seconds
 - **Model**: gpt-4o with temperature 0.7

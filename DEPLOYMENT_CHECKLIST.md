@@ -85,7 +85,7 @@ Value: 21m00Tcm4TlvDq8ikWAM
 Environments: Production
 
 Name: AI_WEBHOOK_URL
-Value: https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+Value: your-n8n-webhook-url-here
 Environments: Production
 
 Name: NEXT_PUBLIC_DEBUG_MODE
@@ -128,7 +128,7 @@ Environments: Production
 5. Add to Vercel as `ELEVENLABS_API_KEY`
 
 ### Verify n8n Webhook (Optional)
-1. n8n URL: https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+1. n8n URL: https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI (production)
 2. This should be in `AI_WEBHOOK_URL` environment variable
 3. If webhook is down, OpenAI fallback will handle it
 

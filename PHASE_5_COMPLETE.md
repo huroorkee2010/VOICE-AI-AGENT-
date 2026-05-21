@@ -184,7 +184,7 @@ Sign up or login with GitHub
 OPENAI_API_KEY=sk-[your-key-here]
 ELEVENLABS_API_KEY=[your-key-here]
 ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
-AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+AI_WEBHOOK_URL=your-n8n-webhook-url-here
 NEXT_PUBLIC_DEBUG_MODE=false
 ```
 
@@ -207,7 +207,7 @@ Deployment URL: https://[your-app-name].vercel.app
 - Default Voice ID: `21m00Tcm4TlvDq8ikWAM`
 
 **n8n Webhook**
-- Already configured: https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+- Already configured: your-n8n-webhook-url-here
 - No additional setup needed
 
 ---

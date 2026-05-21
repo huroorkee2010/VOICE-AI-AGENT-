@@ -98,7 +98,7 @@ ELEVENLABS_API_KEY=your-real-elevenlabs-key-here
 ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM
 
 # Keep these as-is
-AI_WEBHOOK_URL=https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+AI_WEBHOOK_URL=your-n8n-webhook-url-here
 NEXT_PUBLIC_APP_NAME=HUVOICE AI Voice Agent
 NEXT_PUBLIC_API_BASE_URL=/api
 NEXT_PUBLIC_USE_OPENAI_REALTIME=true
@@ -141,7 +141,7 @@ After local testing works:
    OPENAI_API_KEY = sk-proj-your-key
    ELEVENLABS_API_KEY = your-key
    ELEVENLABS_VOICE_ID = 21m00Tcm4TlvDq8ikWAM
-   AI_WEBHOOK_URL = https://huassist2010.app.n8n.cloud/webhook/HUVOICE-AI
+   AI_WEBHOOK_URL = your-n8n-webhook-url-here
    NEXT_PUBLIC_DEBUG_MODE = false
    ```
 5. Redeploy
