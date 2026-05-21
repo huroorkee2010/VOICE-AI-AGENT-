@@ -98,10 +98,6 @@ class APIClient {
       throw error;
     }
   }
-    }
-
-    return response.data;
-  }
 
   /**
    * Get realtime stream
