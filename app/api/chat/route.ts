@@ -296,7 +296,7 @@ export const runtime = 'nodejs';
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { message, history } = body;
+    const { message } = body;
 
     console.log('\n' + '='.repeat(60));
     console.log('📨 Chat request received');

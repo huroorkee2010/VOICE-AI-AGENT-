@@ -221,35 +221,6 @@ export const useVoiceChat = () => {
     [handleAIResponse, store]
   );
 
-  const handleAudioBlobTranscript = useCallback(
-    async (audioBlob: Blob | null) => {
-      if (!audioBlob) {
-        return;
-      }
-
-      try {
-        setIsWaitingForAI(true);
-        const response = await apiClient.speechToText(audioBlob);
-        const transcript = response.text?.trim();
-
-        if (!transcript) {
-          throw new Error('Speech transcription returned no text');
-        }
-
-        await processTranscript(transcript);
-      } catch (error) {
-        console.error('❌ Speech-to-text error:', error);
-        const errorMessage =
-          error instanceof Error ? error.message : CONSTANTS.ERRORS.AUDIO_RECORDING_ERROR;
-        store.setError(errorMessage);
-        toast.error(errorMessage);
-      } finally {
-        setIsWaitingForAI(false);
-      }
-    },
-    [processTranscript, store]
-  );
-
   const stopListeningInternal = useCallback(async () => {
     if (recognitionRef.current) {
       try {
@@ -259,17 +230,13 @@ export const useVoiceChat = () => {
       }
     }
 
-    const audioBlob = await audioRecorder.stopRecording().catch(() => null);
+    await audioRecorder.stopRecording().catch(() => null);
 
     store.setRecording(false);
     store.setListening(false);
 
-    if (!transcriptProcessedRef.current) {
-      await handleAudioBlobTranscript(audioBlob);
-    }
-
     transcriptProcessedRef.current = false;
-  }, [audioRecorder, handleAudioBlobTranscript, store]);
+  }, [audioRecorder, store]);
 
   const startListening = useCallback(async () => {
     transcriptProcessedRef.current = false;
