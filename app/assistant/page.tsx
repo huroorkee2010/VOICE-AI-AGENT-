@@ -5,15 +5,13 @@ import { motion } from 'framer-motion';
 import { Navbar } from '@/components/layout/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Card } from '@/components/ui/Card';
-import { MicrophoneButton } from '@/components/assistant/MicrophoneButton';
+import { ChatInput } from '@/components/assistant/ChatInput';
 import { AIIndicator } from '@/components/assistant/AIIndicator';
 import { WaveformAnimation } from '@/components/assistant/WaveformAnimation';
 import { ConversationHistory } from '@/components/assistant/ConversationHistory';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { useConversationStore } from '@/store/conversation';
-import { Send, Menu, X, Maximize2, Minimize2 } from 'lucide-react';
+import { Menu, X, Maximize2, Minimize2 } from 'lucide-react';
 
 export default function AssistantPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -71,14 +69,6 @@ export default function AssistantPage() {
     if (!textInput.trim()) return;
     sendMessage(textInput);
     setTextInput('');
-  };
-
-  // Handle key press
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
   };
 
   // Handle microphone button press (push to talk)
@@ -208,65 +198,33 @@ export default function AssistantPage() {
 
             {/* Controls */}
             <div className="px-4 sm:px-6 py-6 space-y-4">
-              {/* Voice Input Section */}
-              <div className="flex flex-col items-center gap-4">
-                <div className="flex flex-col items-center gap-3">
-                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 ${isRecording ? 'bg-red-500/15 text-red-300 border border-red-500/30 animate-glow-pulse' : isReady ? 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30' : 'bg-dark-700/70 text-dark-300 border border-dark-700'}`}>
-                    <span className="w-2 h-2 rounded-full bg-current block" />
-                    {isRecording ? 'Recording...' : isReady ? 'Ready to record' : 'Assistant paused'}
-                  </div>
-                  <div className="text-xs text-dark-400 tracking-wide">
-                    {isRecording
-                      ? 'Live voice capture is active'
-                      : isListening
-                      ? 'Listening for speech input…'
-                      : isSpeaking
-                      ? 'Playing AI response…'
-                      : isReady
-                      ? 'Tap the mic and speak naturally'
-                      : 'Turn READY ON to enable voice input'}
-                  </div>
-                </div>
+              {/* Chat Input with Mic and Send Buttons */}
+              <ChatInput
+                value={textInput}
+                onChange={setTextInput}
+                onSend={handleSendMessage}
+                onMicStart={handleMicStart}
+                onMicStop={handleMicStop}
+                isRecording={isRecording}
+                isProcessing={isProcessing}
+                isSpeaking={isSpeaking}
+                isDisabled={!isReady || isSpeaking || voiceChat.isWaitingForAI}
+                recordingTime={voiceChat.audioRecorder.recordingTime}
+                detectedLanguage={voiceChat.detectedLanguage}
+              />
 
-                <MicrophoneButton
-                  isRecording={isRecording}
-                  onStart={handleMicStart}
-                  onStop={handleMicStop}
-                  disabled={!isReady || isSpeaking || voiceChat.isProcessing}
-                  recordingTime={voiceChat.audioRecorder.recordingTime}
-                />
-
-                {(voiceChat.isWaitingForAI || isSpeaking || isProcessing) && (
+              {/* Interrupt Button */}
+              {(voiceChat.isWaitingForAI || isSpeaking || isProcessing) && (
+                <div className="flex justify-center">
                   <Button
                     variant="danger"
                     onClick={interruptAI}
+                    className="px-6"
                   >
                     Interrupt
                   </Button>
-                )}
-              </div>
-
-              {/* Text Input Section */}
-              <Card glass className="p-4">
-                <div className="flex gap-2">
-                  <Input
-                    value={textInput}
-                    onChange={(e) => setTextInput(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    placeholder="Or type a message..."
-                    disabled={!isReady || isRecording || isSpeaking || voiceChat.isProcessing}
-                  />
-                  <Button
-                    variant="primary"
-                    onClick={handleSendMessage}
-                    disabled={!isReady || !textInput.trim() || isRecording || isSpeaking || voiceChat.isProcessing}
-                    size="md"
-                    className="flex-shrink-0"
-                  >
-                    <Send className="w-5 h-5" />
-                  </Button>
                 </div>
-              </Card>
+              )}
 
               {/* Quick Actions */}
               <div className="flex flex-wrap gap-2 justify-center">
@@ -293,6 +251,15 @@ export default function AssistantPage() {
                   disabled={!isReady || isRecording || isSpeaking || voiceChat.isProcessing}
                 >
                   Joke
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => sendMessage('Kya haal hai')}
+                  disabled={!isReady || isRecording || isSpeaking || voiceChat.isProcessing}
+                  title="Hindi greeting"
+                >
+                  हिंदी
                 </Button>
                 <Button
                   variant="secondary"

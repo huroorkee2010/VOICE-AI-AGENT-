@@ -21,12 +21,50 @@ export const useVoiceChat = () => {
   const transcriptProcessedRef = useRef(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isWaitingForAI, setIsWaitingForAI] = useState(false);
+  const [detectedLanguage, setDetectedLanguage] = useState<'en' | 'hi'>('en');
+  const currentSpeechLang: 'en-US' | 'hi-IN' = 'en-US';
 
   useEffect(() => {
     if (!store.currentConversation) {
       store.createConversation();
     }
   }, [store.currentConversation, store.createConversation]);
+
+  // Detect language from text
+  const detectLanguage = (text: string): 'en' | 'hi' => {
+    // Hindi character ranges
+    const hindiRegex = /[\u0900-\u097F]/g;
+    const hindiMatches = text.match(hindiRegex) || [];
+    
+    // English character check
+    const englishRegex = /[a-zA-Z]/g;
+    const englishMatches = text.match(englishRegex) || [];
+    
+    // Common Hindi words
+    const commonHindiWords = [
+      'kya', 'haal', 'hai', 'aap', 'main', 'bilkul', 'theek', 'hoon', 'aur',
+      'ke', 'ki', 'ka', 'se', 'mein', 'ek', 'tha', 'the', 'hain', 'nahi',
+      'ho', 'kaun', 'kaise', 'kab', 'where', 'kahan', 'kya ho raha hai'
+    ];
+    
+    // Check for Hindi characters first
+    if (hindiMatches.length > englishMatches.length * 0.3) {
+      return 'hi';
+    }
+    
+    // Check for common Hindi words (transliteration)
+    const lowerText = text.toLowerCase();
+    const hindiWordsFound = commonHindiWords.filter(word => 
+      lowerText.includes(word.toLowerCase())
+    ).length;
+    
+    if (hindiWordsFound > 2) {
+      return 'hi';
+    }
+    
+    // Default to English
+    return 'en';
+  };
 
   const speakText = useCallback(
     async (text: string) => {
@@ -102,11 +140,12 @@ export const useVoiceChat = () => {
   );
 
   const handleAIResponse = useCallback(
-    async (userText: string) => {
+    async (userText: string, language: 'en' | 'hi' = 'en') => {
       try {
         setIsWaitingForAI(true);
+        setDetectedLanguage(language);
 
-        console.log('🤖 Requesting AI response for:', userText);
+        console.log('🤖 Requesting AI response for:', userText, 'Language:', language);
 
         setIsProcessing(true);
 
@@ -118,7 +157,7 @@ export const useVoiceChat = () => {
         let aiResponse = '';
         try {
           const response = await Promise.race([
-            apiClient.chat(userText, store.currentConversation?.messages, abortControllerRef.current.signal),
+            apiClient.chat(userText, store.currentConversation?.messages, abortControllerRef.current.signal, language),
             new Promise((_, reject) =>
               setTimeout(() => reject(new Error('timeout')), 35000)
             ),
@@ -148,6 +187,10 @@ export const useVoiceChat = () => {
         };
 
         store.addMessage(aiMessage);
+
+        // Update voice settings to use the detected language for TTS
+        const ttsLanguage = language === 'hi' ? 'hi-IN' : 'en-US';
+        store.setVoiceSettings({ language: ttsLanguage });
 
         if (store.userPreferences.autoPlay) {
           try {
@@ -207,6 +250,10 @@ export const useVoiceChat = () => {
       const userText = transcript.trim();
       if (!userText) return;
 
+      // Detect language
+      const detectedLang = detectLanguage(userText);
+      setDetectedLanguage(detectedLang);
+
       const userMessage: Message = {
         id: stringUtils.generateId(),
         role: 'user',
@@ -216,9 +263,9 @@ export const useVoiceChat = () => {
       };
 
       store.addMessage(userMessage);
-      await handleAIResponse(userText);
+      await handleAIResponse(userText, detectedLang);
     },
-    [handleAIResponse, store]
+    [handleAIResponse, store, detectLanguage]
   );
 
   const stopListeningInternal = useCallback(async () => {
@@ -253,7 +300,8 @@ export const useVoiceChat = () => {
           recognitionRef.current = new SpeechRecognitionConstructor();
           recognitionRef.current.continuous = false;
           recognitionRef.current.interimResults = true;
-          recognitionRef.current.lang = store.userPreferences.voiceSettings.language || 'en-US';
+          // Start with English, will detect and potentially switch based on content
+          recognitionRef.current.lang = currentSpeechLang;
           recognitionRef.current.maxAlternatives = 1;
 
           recognitionRef.current.onresult = async (event: any) => {
@@ -295,7 +343,7 @@ export const useVoiceChat = () => {
       store.setRecording(false);
       store.setListening(false);
     }
-  }, [audioRecorder, processTranscript, stopListeningInternal, store]);
+  }, [audioRecorder, processTranscript, stopListeningInternal, store, currentSpeechLang]);
 
   const stopListening = useCallback(async () => {
     await stopListeningInternal();
@@ -304,6 +352,10 @@ export const useVoiceChat = () => {
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim()) return;
+
+      // Detect language from the input text
+      const detectedLang = detectLanguage(text);
+      setDetectedLanguage(detectedLang);
 
       const userMessage: Message = {
         id: stringUtils.generateId(),
@@ -314,9 +366,9 @@ export const useVoiceChat = () => {
       };
 
       store.addMessage(userMessage);
-      await handleAIResponse(text);
+      await handleAIResponse(text, detectedLang);
     },
-    [handleAIResponse, store]
+    [handleAIResponse, store, detectLanguage]
   );
 
   const interruptAI = useCallback(() => {
@@ -369,6 +421,7 @@ export const useVoiceChat = () => {
   return {
     isProcessing,
     isWaitingForAI,
+    detectedLanguage,
     currentConversation: store.currentConversation,
     audioState: store.audioState,
     userPreferences: store.userPreferences,

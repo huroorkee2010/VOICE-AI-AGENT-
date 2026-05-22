@@ -52,16 +52,18 @@ class APIClient {
   async chat(
     message: string,
     conversationHistory?: any[],
-    signal?: AbortSignal
-  ): Promise<{ message: string; tokens?: number }> {
-    console.log('📤 Sending chat message:', { message, historyLength: conversationHistory?.length });
+    signal?: AbortSignal,
+    language?: 'en' | 'hi'
+  ): Promise<{ message: string; tokens?: number; language?: string }> {
+    console.log('📤 Sending chat message:', { message, historyLength: conversationHistory?.length, language });
     
     try {
       const response = await this.client.post<
-        APIResponse<{ message: string; tokens?: number }>
+        APIResponse<{ message: string; tokens?: number; language?: string }>
       >(CONSTANTS.API.CHAT, {
         message,
         history: conversationHistory,
+        language: language || 'en',
       }, {
         signal,
       });
